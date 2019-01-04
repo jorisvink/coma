@@ -78,8 +78,8 @@ prefix-K     = kill client in current frame
 Screenshots
 -----------
 
-With 80 column frames (and the Spleen font):
+With 80 column frames (and the [Spleen](https://github.com/fcambus/spleen) font):
 ![Default](/screenshots/default.png?raw=true)
 
-With 161 column frames (and the Spleen font):
+With 161 column frames (and the [Spleen](https://github.com/fcambus/spleen) font):
 ![Large](/screenshots/large.png?raw=true)
