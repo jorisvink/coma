@@ -37,7 +37,7 @@ $ make
 
 Linux:
 ```
-$ env CFLAGS=-D\_GNU\_SOURCE make
+$ env CFLAGS=-D_GNU_SOURCE make
 ```
 
 Key bindings
