@@ -15,6 +15,14 @@ enough to fit 80 column xterms.
 Large means it will calculate the frames based on 161 column xterms
 (so I can use tmux and split it to get 80 columns in each pane).
 
+You can also specify the width of the frames yourself using the -w
+option. For example running with an 8x16 font and wanting an 80 column
+terminal:
+
+```
+$ coma -w 644
+```
+
 License
 -------
 Coma is licensed under the ISC license.
