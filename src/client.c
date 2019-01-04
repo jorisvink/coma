@@ -22,7 +22,7 @@
 #include "coma.h"
 
 static u_int32_t	client_id = 0;
-static struct client	*client_active = NULL;
+struct client		*client_active = NULL;
 
 void
 coma_client_create(Window window)

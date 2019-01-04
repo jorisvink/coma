@@ -80,6 +80,7 @@ extern u_int16_t		frame_width;
 extern u_int16_t		screen_width;
 extern u_int16_t		screen_height;
 extern struct frame		*frame_active;
+extern struct client		*client_active;
 extern volatile sig_atomic_t	sig_recv;
 
 void		fatal(const char *, ...);

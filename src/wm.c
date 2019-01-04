@@ -220,8 +220,14 @@ wm_window_destroy(XDestroyWindowEvent *evt)
 static void
 wm_handle_prefix(XKeyEvent *prefix)
 {
-	XEvent		evt;
-	KeySym		sym;
+	XEvent			evt;
+	KeySym			sym;
+	Window			focus;
+	int			revert;
+	struct client		*client;
+
+	client = client_active;
+	XGetInputFocus(dpy, &focus, &revert);
 
 	sym = XkbKeycodeToKeysym(dpy, prefix->keycode, 0, 0);
 
@@ -264,6 +270,9 @@ wm_handle_prefix(XKeyEvent *prefix)
 		sig_recv = SIGQUIT;
 		break;
 	}
+
+	if (client == client_active)
+		XSetInputFocus(dpy, focus, RevertToPointerRoot, CurrentTime);
 }
 
 static void
