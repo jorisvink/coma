@@ -24,12 +24,21 @@ Building
 
 Coma should build fine on MacOS, Linux and OpenBSD.
 
-On the BSDs gmake is required.
+OpenBSD:
+```
+$ gmake
+```
 
-For MacOS make sure you set PKG\_CONFIG\_PATH to include XQuartz.
-(usually /opt/X11/share/pkgconfig:/opt/X11/lib/pkgconfig)
+MacOS:
+```
+$ export PKG_CONFIG_PATH=/opt/X11/share/pkgconfig:/opt/X11/lib/pkgconfig
+$ make
+```
 
-For Linux do an env CFLAGS=-D\_GNU\_SOURCE make when building.
+Linux:
+```
+$ env CFLAGS=-D\_GNU\_SOURCE make
+```
 
 Key bindings
 ------------
