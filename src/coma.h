@@ -24,6 +24,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <signal.h>
 
 #define errno_s				strerror(errno)
 

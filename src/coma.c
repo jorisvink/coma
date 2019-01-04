@@ -15,9 +15,11 @@
  */
 
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #include <signal.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
