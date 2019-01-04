@@ -45,9 +45,6 @@ coma_client_create(Window window)
 	client->frame = frame_active;
 	client->bw = 1;
 
-	printf("client_create %ld: %dx%d (%dx%d)\n", client->window,
-	    client->w, client->h, client->x, client->y);
-
 	XSelectInput(dpy, client->window,
 	    StructureNotifyMask | PropertyChangeMask | FocusChangeMask);
 
@@ -92,7 +89,6 @@ coma_client_destroy(struct client *client)
 		was_active = 0;
 	}
 
-	printf("client_destroy: %ld (%d)\n", client->window, was_active);
 	TAILQ_REMOVE(&frame->clients, client, list);
 	free(client);
 
@@ -103,7 +99,6 @@ coma_client_destroy(struct client *client)
 		coma_frame_select_any();
 	} else {
 		next = TAILQ_FIRST(&frame->clients);
-		printf("\tnext: %ld\n", next != NULL ? next->window : 0);
 		if (next != NULL)
 			coma_client_focus(next);
 	}
@@ -165,9 +160,6 @@ coma_client_send_configure(struct client *client)
 	cfg.width = client->w;
 	cfg.height = client->h;
 	cfg.border_width = client->bw;
-
-	printf("client_configure %ld: %dx%d (%dx%d)\n", client->window,
-	    client->w, client->h, client->x, client->y);
 
 	XMoveResizeWindow(dpy, client->window,
 	    client->x, client->y, client->w, client->h);

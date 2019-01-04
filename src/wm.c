@@ -211,8 +211,6 @@ wm_window_destroy(XDestroyWindowEvent *evt)
 	if (evt->window == key_input)
 		return;
 
-	printf("wm destroy %ld\n", evt->window);
-
 	if ((client = coma_client_find(evt->window)) == NULL)
 		return;
 

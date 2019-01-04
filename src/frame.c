@@ -47,8 +47,6 @@ coma_frame_setup(void)
 	if (offset > (COMA_FRAME_GAP * count))
 		offset -= COMA_FRAME_GAP * count;
 
-	printf("screen fits %u frames (start:%u)\n", count, offset);
-
 	for (i = 0; i < count; i++) {
 		frame_create(i, frame_width, offset);
 		offset += frame_width + COMA_FRAME_GAP;
