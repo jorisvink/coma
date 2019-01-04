@@ -78,8 +78,8 @@ prefix-K     = kill client in current frame
 Screenshots
 -----------
 
-Default frame:
+With 80 column frames (and the Spleen font):
 ![Default](/screenshots/default.png?raw=true)
 
-Large frame:
+With 161 column frames (and the Spleen font):
 ![Large](/screenshots/large.png?raw=true)
