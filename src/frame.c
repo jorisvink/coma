@@ -21,16 +21,20 @@
 
 #include "coma.h"
 
-static void	frame_create(u_int16_t, u_int16_t, u_int16_t);
+#define FRAME_POPUP_ID	0xffff
+
+static struct frame	*frame_create(u_int16_t, u_int16_t, u_int16_t);
 
 static struct frame_list	frames;
 
+struct frame			*frame_popup = NULL;
 struct frame			*frame_active = NULL;
 u_int16_t			frame_width = COMA_FRAME_WIDTH_DEFAULT;
 
 void
 coma_frame_setup(void)
 {
+	struct frame	*frame;
 	u_int16_t	i, count, width, offset;
 
 	TAILQ_INIT(&frames);
@@ -48,11 +52,36 @@ coma_frame_setup(void)
 		offset -= COMA_FRAME_GAP * count;
 
 	for (i = 0; i < count; i++) {
-		frame_create(i, frame_width, offset);
+		frame = frame_create(i, frame_width, offset);
+		TAILQ_INSERT_TAIL(&frames, frame, list);
 		offset += frame_width + COMA_FRAME_GAP;
 	}
 
 	frame_active = TAILQ_FIRST(&frames);
+
+	width = screen_width - (COMA_FRAME_GAP * 2);
+	frame_popup = frame_create(FRAME_POPUP_ID, width, COMA_FRAME_GAP);
+}
+
+void
+coma_frame_popup(void)
+{
+	struct client	*client, *focus;
+
+	if (frame_active == frame_popup) {
+		TAILQ_FOREACH(client, &frame_popup->clients, list)
+			coma_client_hide(client);
+		coma_frame_select_any();
+	} else {
+		focus = frame_popup->focus;
+		frame_active = frame_popup;
+
+		TAILQ_FOREACH(client, &frame_popup->clients, list)
+			coma_client_unhide(client);
+
+		if (focus != NULL)
+			coma_client_focus(focus);
+	}
 }
 
 void
@@ -60,6 +89,9 @@ coma_frame_next(void)
 {
 	struct frame	*next;
 	struct client	*client;
+
+	if (frame_active == frame_popup)
+		return;
 
 	next = TAILQ_NEXT(frame_active, list);
 	if (next != NULL) {
@@ -80,6 +112,9 @@ coma_frame_prev(void)
 {
 	struct frame	*prev;
 	struct client	*client;
+
+	if (frame_active == frame_popup)
+		return;
 
 	prev = TAILQ_PREV(frame_active, frame_list, list);
 	if (prev != NULL) {
@@ -134,11 +169,18 @@ coma_frame_select_any(void)
 		break;
 	}
 
-	if (frame != NULL) {
-		frame_active = frame;
+	if (frame == NULL)
+		frame = TAILQ_FIRST(&frames);
+
+	frame_active = frame;
+
+	if (frame->focus == NULL)
 		client = TAILQ_FIRST(&frame_active->clients);
+	else
+		client = frame->focus;
+
+	if (client != NULL)
 		coma_client_focus(client);
-	}
 }
 
 struct client *
@@ -154,10 +196,15 @@ coma_frame_find_client(Window window)
 		}
 	}
 
+	TAILQ_FOREACH(client, &frame_popup->clients, list) {
+		if (client->window == window)
+			return (client);
+	}
+
 	return (NULL);
 }
 
-static void
+static struct frame *
 frame_create(u_int16_t id, u_int16_t width, u_int16_t offset)
 {
 	struct frame		*frame;
@@ -169,5 +216,6 @@ frame_create(u_int16_t id, u_int16_t width, u_int16_t offset)
 	frame->offset = offset;
 
 	TAILQ_INIT(&frame->clients);
-	TAILQ_INSERT_TAIL(&frames, frame, list);
+
+	return (frame);
 }

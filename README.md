@@ -48,6 +48,8 @@ C-t = prefix
 
 prefix-C     = new xterm
 
+prefix-Space = toggle popup area
+
 prefix-P     = previous window
 
 prefix-N     = next window

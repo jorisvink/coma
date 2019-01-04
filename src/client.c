@@ -21,6 +21,7 @@
 
 #include "coma.h"
 
+static u_int32_t	client_id = 0;
 static struct client	*client_active = NULL;
 
 void
@@ -37,13 +38,14 @@ coma_client_create(Window window)
 	if (client_active == NULL)
 		client_active = client;
 
+	client->bw = 1;
 	client->x = attr.x;
 	client->y = attr.y;
 	client->w = attr.width;
 	client->h = attr.height;
 	client->window = window;
+	client->id = client_id++;
 	client->frame = frame_active;
-	client->bw = 1;
 
 	XSelectInput(dpy, client->window,
 	    StructureNotifyMask | PropertyChangeMask | FocusChangeMask);
@@ -82,12 +84,15 @@ coma_client_destroy(struct client *client)
 
 	frame = client->frame;
 
-	if (client == client_active) {
+	if (client_active != NULL && client_active->id == client->id) {
 		was_active = 1;
 		client_active = NULL;
 	} else {
 		was_active = 0;
 	}
+
+	if (frame->focus != NULL && frame->focus->id == client->id)
+		frame->focus = NULL;
 
 	TAILQ_REMOVE(&frame->clients, client, list);
 	free(client);
@@ -123,6 +128,18 @@ coma_client_map(struct client *client)
 }
 
 void
+coma_client_hide(struct client *client)
+{
+	XUnmapWindow(dpy, client->window);
+}
+
+void
+coma_client_unhide(struct client *client)
+{
+	coma_client_map(client);
+}
+
+void
 coma_client_focus(struct client *client)
 {
 	XftColor	*color;
@@ -133,7 +150,7 @@ coma_client_focus(struct client *client)
 	color = coma_wm_xftcolor(COMA_WM_COLOR_WIN_ACTIVE);
 	XSetWindowBorder(dpy, client->window, color->pixel);
 
-	if (client_active != NULL && client_active != client) {
+	if (client_active != NULL && client_active->id != client->id) {
 		color = coma_wm_xftcolor(COMA_WM_COLOR_WIN_INACTIVE);
 		XSetWindowBorder(dpy, client_active->window, color->pixel);
 	}
