@@ -20,14 +20,19 @@ Key bindings cannot be changed unless you hack the code:
 C-t = prefix
 
 prefix-C     = new xterm
+
 prefix-P     = previous window
+
 prefix-N     = next window
+
 prefix-R     = restart Coma
 
 prefix-H     = move to frame to the left of current frame
+
 prefix-Left  = move to frame to the left of current frame
 
 prefix-L     = move to frame to the right of current frame
+
 prefix-Right = move to frame to the right of current frame
 
 prefix-K     = kill client in current frame
