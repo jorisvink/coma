@@ -37,6 +37,7 @@ usage(void)
 	printf("Help for coma %s\n", COMA_VERSION);
 	printf("\n");
 	printf("-f\tFrame width, default (80) or large (161))\n");
+	printf("-w\tSpecify frame width yourself\n");
 	printf("\n");
 	printf("Mail bugs and patches to joris@coders.se\n");
 	printf("\n");
@@ -46,22 +47,34 @@ usage(void)
 int
 main(int argc, char *argv[])
 {
-	int			ch;
 	struct sigaction	sa;
+	u_int16_t		fw;
 	char			**cargv;
+	int			ch, width, fflag;
 
+	fflag = 0;
+	width = -1;
 	cargv = argv;
 
-	while ((ch = getopt(argc, argv, "hf:")) != -1) {
+	while ((ch = getopt(argc, argv, "hf:w:")) != -1) {
 		switch (ch) {
 		case 'f':
+			fflag = 1;
 			if (!strcmp(optarg, "default")) {
-				frame_width = COMA_FRAME_WIDTH_DEFAULT;
+				fw = COMA_FRAME_WIDTH_DEFAULT;
 			} else if (!strcmp(optarg, "large")) {
-				frame_width = COMA_FRAME_WIDTH_LARGE;
+				fw = COMA_FRAME_WIDTH_LARGE;
 			} else {
 				fatal("unknown frame type %s (default|large)",
 				    optarg);
+			}
+			break;
+		case 'w':
+			/* XXX */
+			width = atoi(optarg);
+			if (width <= 0 && width >= USHRT_MAX) {
+				fatal("width %d is probably not what you want",
+				    width);
 			}
 			break;
 		case 'h':
@@ -69,6 +82,15 @@ main(int argc, char *argv[])
 			usage();
 			break;
 		}
+	}
+
+	if (fflag && width != -1)
+		fatal("-f and -w are mutually exclusive options");
+
+	if (width != -1) {
+		frame_width = width;
+	} else if (fflag) {
+		frame_width = fw;
 	}
 
 	memset(&sa, 0, sizeof(sa));
