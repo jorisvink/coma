@@ -5,8 +5,8 @@ COMA=coma
 OBJDIR?=obj
 PREFIX?=/usr/local
 
-SRC=	coma.c client.c frame.c wm.c
-OBJS=	$(SRC:%.c=$(OBJDIR)/%.o)
+SRC=	src/coma.c src/client.c src/frame.c src/wm.c
+OBJS=	$(SRC:src/%.c=$(OBJDIR)/%.o)
 
 CFLAGS+=-Wall
 CFLAGS+=-Werror
@@ -31,7 +31,7 @@ $(COMA): $(OBJDIR) $(OBJS)
 $(OBJDIR):
 	@mkdir -p $(OBJDIR)
 
-$(OBJDIR)/%.o: %.c
+$(OBJDIR)/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
