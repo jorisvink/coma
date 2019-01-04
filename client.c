@@ -104,6 +104,7 @@ void
 coma_client_adjust(struct client *client)
 {
 	client->y = COMA_FRAME_GAP;
+	client->w = client->frame->width;
 	client->x = client->frame->offset;
 	client->h = screen_height - (COMA_FRAME_GAP * 2);
 

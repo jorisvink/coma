@@ -26,12 +26,48 @@
 
 static void	coma_signal(int);
 
+int			restart = 0;
 volatile sig_atomic_t	sig_recv = -1;
 
-int
-main(void)
+static void
+usage(void)
 {
+	printf("Help for coma %s\n", COMA_VERSION);
+	printf("\n");
+	printf("-f\tFrame width, default (80) or large (161))\n");
+	printf("\n");
+	printf("Mail bugs and patches to joris@coders.se\n");
+	printf("\n");
+	exit(1);
+}
+
+int
+main(int argc, char *argv[])
+{
+	int			ch;
 	struct sigaction	sa;
+	char			**cargv;
+
+	cargv = argv;
+
+	while ((ch = getopt(argc, argv, "hf:")) != -1) {
+		switch (ch) {
+		case 'f':
+			if (!strcmp(optarg, "default")) {
+				frame_width = COMA_FRAME_WIDTH_DEFAULT;
+			} else if (!strcmp(optarg, "large")) {
+				frame_width = COMA_FRAME_WIDTH_LARGE;
+			} else {
+				fatal("unknown frame type %s (default|large)",
+				    optarg);
+			}
+			break;
+		case 'h':
+		default:
+			usage();
+			break;
+		}
+	}
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = coma_signal;
@@ -52,6 +88,11 @@ main(void)
 
 	coma_wm_setup();
 	coma_wm_run();
+
+	if (restart) {
+		execvp(cargv[0], cargv);
+		fatal("failed to restart process: %s", errno_s);
+	}
 
 	return (0);
 }

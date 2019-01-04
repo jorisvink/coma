@@ -21,10 +21,12 @@
 
 #include "coma.h"
 
-static void	frame_create(u_int16_t, u_int16_t);
+static void	frame_create(u_int16_t, u_int16_t, u_int16_t);
 
 static struct frame_list	frames;
+
 struct frame			*frame_active = NULL;
+u_int16_t			frame_width = COMA_FRAME_WIDTH_DEFAULT;
 
 void
 coma_frame_setup(void)
@@ -36,9 +38,9 @@ coma_frame_setup(void)
 	count = 0;
 	width = screen_width;
 
-	while (width > COMA_FRAME_WIDTH) {
+	while (width > frame_width) {
 		count++;
-		width -= COMA_FRAME_WIDTH;
+		width -= frame_width;
 	}
 
 	offset = width / 2;
@@ -48,8 +50,8 @@ coma_frame_setup(void)
 	printf("screen fits %u frames (start:%u)\n", count, offset);
 
 	for (i = 0; i < count; i++) {
-		frame_create(i, offset);
-		offset += COMA_FRAME_WIDTH + COMA_FRAME_GAP;
+		frame_create(i, frame_width, offset);
+		offset += frame_width + COMA_FRAME_GAP;
 	}
 
 	frame_active = TAILQ_FIRST(&frames);
@@ -158,13 +160,14 @@ coma_frame_find_client(Window window)
 }
 
 static void
-frame_create(u_int16_t id, u_int16_t offset)
+frame_create(u_int16_t id, u_int16_t width, u_int16_t offset)
 {
 	struct frame		*frame;
 
 	frame = coma_calloc(1, sizeof(*frame));
 
 	frame->id = id;
+	frame->width = width;
 	frame->offset = offset;
 
 	TAILQ_INIT(&frame->clients);

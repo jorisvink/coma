@@ -230,34 +230,34 @@ wm_handle_prefix(XKeyEvent *prefix)
 	if (sym != COMA_PREFIX_KEY)
 		return;
 
-	for (;;) {
-		XSetInputFocus(dpy, key_input, RevertToNone, CurrentTime);
-		XMaskEvent(dpy, KeyPressMask, &evt);
+	XSetInputFocus(dpy, key_input, RevertToNone, CurrentTime);
+	XMaskEvent(dpy, KeyPressMask, &evt);
 
-		if (evt.type != KeyPress)
-			continue;
+	if (evt.type != KeyPress)
+		return;
 
-		sym = XkbKeycodeToKeysym(dpy, evt.xkey.keycode, 0, 0);
-		switch (sym) {
-		case XK_c:
-			coma_spawn_terminal();
-			break;
-		case XK_p:
-			coma_frame_client_prev();
-			break;
-		case XK_n:
-			coma_frame_client_next();
-			break;
-		case XK_h:
-		case XK_Left:
-			coma_frame_prev();
-			break;
-		case XK_l:
-		case XK_Right:
-			coma_frame_next();
-			break;
-		}
-
+	sym = XkbKeycodeToKeysym(dpy, evt.xkey.keycode, 0, 0);
+	switch (sym) {
+	case XK_c:
+		coma_spawn_terminal();
+		break;
+	case XK_p:
+		coma_frame_client_prev();
+		break;
+	case XK_n:
+		coma_frame_client_next();
+		break;
+	case XK_h:
+	case XK_Left:
+		coma_frame_prev();
+		break;
+	case XK_l:
+	case XK_Right:
+		coma_frame_next();
+		break;
+	case XK_r:
+		restart = 1;
+		sig_recv = SIGQUIT;
 		break;
 	}
 }

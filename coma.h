@@ -27,14 +27,19 @@
 
 #define errno_s				strerror(errno)
 
+#define COMA_VERSION			"0.1"
 #define COMA_PREFIX_KEY			XK_t
 
 #define COMA_WM_COLOR_WIN_ACTIVE	0
 #define COMA_WM_COLOR_WIN_INACTIVE	1
 #define COMA_WM_COLOR_MAX		2
 
-/* xterm with fixed font is 484 pixels wide (80 characters). */
-#define COMA_FRAME_WIDTH		484
+/* xterm with fixed font is 484 pixels wide (80 columns). */
+#define COMA_FRAME_WIDTH_DEFAULT	484
+
+/* xterm with fixed font 161 columns for tmux sessions. */
+#define COMA_FRAME_WIDTH_LARGE		970
+
 #define COMA_FRAME_GAP			10
 
 struct frame;
@@ -56,6 +61,7 @@ TAILQ_HEAD(client_list, client);
 
 struct frame {
 	u_int16_t		id;
+	u_int16_t		width;
 	u_int16_t		offset;
 	struct client		*focus;
 	struct client_list	clients;
@@ -66,7 +72,8 @@ struct frame {
 TAILQ_HEAD(frame_list, frame);
 
 extern Display			*dpy;
-extern u_int16_t		frame_offset;
+extern int			restart;
+extern u_int16_t		frame_width;
 extern u_int16_t		screen_width;
 extern u_int16_t		screen_height;
 extern struct frame		*frame_active;
