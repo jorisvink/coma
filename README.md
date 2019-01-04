@@ -17,7 +17,7 @@ Large means it will calculate the frames based on 161 column xterms
 
 License
 -------
-* Coma is licensed under the ISC license.
+Coma is licensed under the ISC license.
 
 Key bindings
 ------------
