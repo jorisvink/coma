@@ -19,6 +19,18 @@ License
 -------
 Coma is licensed under the ISC license.
 
+Building
+--------
+
+Coma should build fine on MacOS, Linux and OpenBSD.
+
+On the BSDs gmake is required.
+
+For MacOS make sure you set PKG\_CONFIG\_PATH to include XQuartz.
+(usually /opt/X11/share/pkgconfig:/opt/X11/lib/pkgconfig)
+
+For Linux do an env CFLAGS=-D\_GNU\_SOURCE make when building.
+
 Key bindings
 ------------
 Key bindings cannot be changed unless you hack the code:
