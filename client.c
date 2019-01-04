@@ -61,6 +61,15 @@ coma_client_create(Window window)
 	XSync(dpy, False);
 }
 
+void
+coma_client_kill_active(void)
+{
+	if (client_active == NULL)
+		return;
+
+	XKillClient(dpy, client_active->window);
+}
+
 struct client *
 coma_client_find(Window window)
 {

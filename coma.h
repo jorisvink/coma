@@ -101,6 +101,7 @@ void		coma_frame_client_next(void);
 
 void		coma_client_init(void);
 void		coma_client_create(Window);
+void		coma_client_kill_active(void);
 void		coma_client_map(struct client *);
 void		coma_client_focus(struct client *);
 void		coma_client_adjust(struct client *);

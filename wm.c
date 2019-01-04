@@ -255,6 +255,9 @@ wm_handle_prefix(XKeyEvent *prefix)
 	case XK_Right:
 		coma_frame_next();
 		break;
+	case XK_k:
+		coma_client_kill_active();
+		break;
 	case XK_r:
 		restart = 1;
 		sig_recv = SIGQUIT;
