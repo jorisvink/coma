@@ -63,3 +63,13 @@ prefix-L     = move to frame to the right of current frame
 prefix-Right = move to frame to the right of current frame
 
 prefix-K     = kill client in current frame
+
+
+Screenshots
+-----------
+
+Default frame:
+![Default](/screenshots/default.png?raw=true)
+
+Large frame:
+![Large](/screenshots/large.png?raw=true)
