@@ -54,26 +54,29 @@ Key bindings cannot be changed unless you hack the code:
 
 C-t = prefix
 
-prefix-C     = new xterm
+prefix-c     = new xterm
 
 prefix-Space = toggle popup area
 
-prefix-P     = previous window
+prefix-p     = previous window
 
-prefix-N     = next window
+prefix-n     = next window
 
-prefix-R     = restart Coma
+prefix-r     = restart Coma
 
-prefix-H     = move to frame to the left of current frame
+prefix-h     = move to frame to the left of current frame
 
 prefix-Left  = move to frame to the left of current frame
 
-prefix-L     = move to frame to the right of current frame
+prefix-l     = move to frame to the right of current frame
 
 prefix-Right = move to frame to the right of current frame
 
-prefix-K     = kill client in current frame
+prefix-k     = kill client in current frame
 
+prefix-i     = move active client to the frame on the left
+
+prefix-o     = move active client to the frame on the right
 
 Screenshots
 -----------

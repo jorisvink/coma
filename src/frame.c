@@ -156,6 +156,57 @@ coma_frame_client_prev(void)
 }
 
 void
+coma_frame_client_move(int which)
+{
+	struct frame	*other;
+	struct client	*c1, *c2;
+
+	if (frame_active == frame_popup)
+		return;
+
+	switch (which) {
+	case COMA_CLIENT_MOVE_LEFT:
+		other = TAILQ_PREV(frame_active, frame_list, list);
+		break;
+	case COMA_CLIENT_MOVE_RIGHT:
+		other = TAILQ_NEXT(frame_active, list);
+		break;
+	default:
+		other = NULL;
+		break;
+	}
+
+	if (other == NULL)
+		return;
+
+	c1 = frame_active->focus;
+	c2 = TAILQ_FIRST(&other->clients);
+
+	frame_active->focus = NULL;
+	TAILQ_REMOVE(&frame_active->clients, c1, list);
+
+	if (c2 != NULL)
+		TAILQ_REMOVE(&other->clients, c2, list);
+
+	c1->frame = other;
+	c1->x = other->offset;
+	TAILQ_INSERT_HEAD(&other->clients, c1, list);
+
+	if (c2 != NULL) {
+		c2->frame = frame_active;
+		c2->x = frame_active->offset;
+		TAILQ_INSERT_HEAD(&frame_active->clients, c2, list);
+	}
+
+	coma_client_adjust(c1);
+	if (c2 != NULL)
+		coma_client_adjust(c2);
+
+	frame_active = other;
+	coma_client_focus(c1);
+}
+
+void
 coma_frame_select_any(void)
 {
 	struct frame	*frame;

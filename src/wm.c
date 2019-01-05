@@ -242,6 +242,12 @@ wm_handle_prefix(XKeyEvent *prefix)
 
 	sym = XkbKeycodeToKeysym(dpy, evt.xkey.keycode, 0, 0);
 	switch (sym) {
+	case XK_i:
+		coma_frame_client_move(COMA_CLIENT_MOVE_LEFT);
+		break;
+	case XK_o:
+		coma_frame_client_move(COMA_CLIENT_MOVE_RIGHT);
+		break;
 	case XK_space:
 		coma_frame_popup();
 		break;

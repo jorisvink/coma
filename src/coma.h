@@ -43,6 +43,9 @@
 
 #define COMA_FRAME_GAP			10
 
+#define COMA_CLIENT_MOVE_LEFT		1
+#define COMA_CLIENT_MOVE_RIGHT		2
+
 struct frame;
 
 struct client {
@@ -100,6 +103,7 @@ void		coma_frame_prev(void);
 void		coma_frame_next(void);
 void		coma_frame_setup(void);
 void		coma_frame_popup(void);
+void		coma_frame_client_move(int);
 void		coma_frame_select_any(void);
 void		coma_frame_client_prev(void);
 void		coma_frame_client_next(void);
