@@ -56,6 +56,7 @@ coma_client_create(Window window)
 	coma_wm_register_prefix(client->window);
 	coma_client_adjust(client);
 	coma_client_map(client);
+	coma_frame_bar_update(frame_active);
 
 	XSync(dpy, False);
 }
@@ -97,6 +98,8 @@ coma_client_destroy(struct client *client)
 	TAILQ_REMOVE(&frame->clients, client, list);
 	free(client);
 
+	coma_frame_bar_update(frame);
+
 	if (was_active == 0)
 		return;
 
@@ -104,8 +107,10 @@ coma_client_destroy(struct client *client)
 		coma_frame_select_any();
 	} else {
 		next = TAILQ_FIRST(&frame->clients);
-		if (next != NULL)
+		if (next != NULL) {
 			coma_client_focus(next);
+			coma_frame_bar_update(frame);
+		}
 	}
 }
 
@@ -115,7 +120,7 @@ coma_client_adjust(struct client *client)
 	client->y = COMA_FRAME_GAP;
 	client->w = client->frame->width;
 	client->x = client->frame->offset;
-	client->h = screen_height - (COMA_FRAME_GAP * 2);
+	client->h = screen_height - (COMA_FRAME_GAP * 2) - COMA_FRAME_BAR;
 
 	coma_client_send_configure(client);
 }

@@ -29,11 +29,15 @@
 #define errno_s				strerror(errno)
 
 #define COMA_VERSION			"0.1"
+#define COMA_WM_FONT			"fixed:pixelsize=13"
 #define COMA_PREFIX_KEY			XK_t
 
-#define COMA_WM_COLOR_WIN_ACTIVE	0
-#define COMA_WM_COLOR_WIN_INACTIVE	1
-#define COMA_WM_COLOR_MAX		2
+#define COMA_WM_COLOR_WIN_ACTIVE		0
+#define COMA_WM_COLOR_WIN_INACTIVE		1
+#define COMA_WM_COLOR_FRAME_BAR			2
+#define COMA_WM_COLOR_FRAME_BAR_ACTIVE		3
+#define COMA_WM_COLOR_FRAME_BAR_INACTIVE	4
+#define COMA_WM_COLOR_MAX			5
 
 /* xterm with fixed font is 484 pixels wide (80 columns). */
 #define COMA_FRAME_WIDTH_DEFAULT	484
@@ -42,6 +46,7 @@
 #define COMA_FRAME_WIDTH_LARGE		970
 
 #define COMA_FRAME_GAP			10
+#define COMA_FRAME_BAR			20
 
 #define COMA_CLIENT_MOVE_LEFT		1
 #define COMA_CLIENT_MOVE_RIGHT		2
@@ -66,6 +71,9 @@ struct client {
 TAILQ_HEAD(client_list, client);
 
 struct frame {
+	Window			bar;
+	XftDraw			*xft_draw;
+
 	u_int16_t		id;
 	u_int16_t		width;
 	u_int16_t		offset;
@@ -78,6 +86,7 @@ struct frame {
 TAILQ_HEAD(frame_list, frame);
 
 extern Display			*dpy;
+extern XftFont			*font;
 extern int			restart;
 extern u_int16_t		frame_width;
 extern u_int16_t		screen_width;
@@ -103,10 +112,14 @@ void		coma_frame_prev(void);
 void		coma_frame_next(void);
 void		coma_frame_setup(void);
 void		coma_frame_popup(void);
+void		coma_frame_cleanup(void);
 void		coma_frame_client_move(int);
 void		coma_frame_select_any(void);
 void		coma_frame_client_prev(void);
 void		coma_frame_client_next(void);
+void		coma_frame_bars_create(void);
+void		coma_frame_bars_update(void);
+void		coma_frame_bar_update(struct frame *);
 
 void		coma_client_init(void);
 void		coma_client_create(Window);

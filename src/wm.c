@@ -39,6 +39,7 @@ static int	wm_error(Display *, XErrorEvent *);
 static int	wm_error_active(Display *, XErrorEvent *);
 
 Display		*dpy = NULL;
+XftFont		*font = NULL;
 u_int16_t	screen_width = 0;
 u_int16_t	screen_height = 0;
 
@@ -47,8 +48,11 @@ static XftColor	xft_colors[COMA_WM_COLOR_MAX];
 
 /* Must be in sync with the defines COMA_WM_COLOR_* */
 static const char *colors[] = {
-	"#444444",
+	"#55007a",
 	"#222222",
+	"#55007a",
+	"#ffffff",
+	"#555555",
 	NULL
 };
 
@@ -152,6 +156,9 @@ coma_wm_register_prefix(Window win)
 static void
 wm_teardown(void)
 {
+	coma_frame_cleanup();
+
+	XftFontClose(dpy, font);
 	XDestroyWindow(dpy, key_input);
 
 	XUngrabKeyboard(dpy, CurrentTime);
@@ -178,6 +185,9 @@ wm_screen_init(void)
 	screen_width = DisplayWidth(dpy, screen);
 	screen_height = DisplayHeight(dpy, screen);
 
+	if ((font = XftFontOpenName(dpy, screen, COMA_WM_FONT)) == NULL)
+		fatal("failed to open %s", COMA_WM_FONT);
+
 	for (idx = 0; idx < COMA_WM_COLOR_MAX; idx++) {
 		XftColorAllocName(dpy, visual, colormap, colors[idx], &xc);
 		xft_colors[idx] = xc;
@@ -194,6 +204,8 @@ wm_screen_init(void)
 		for (idx = 0; idx < windows; idx++)
 			coma_client_create(childwin[idx]);
 	}
+
+	coma_frame_bars_create();
 
 	key_input = XCreateSimpleWindow(dpy, root,
 	    0, 0, 1, 1, 0, WhitePixel(dpy, screen), BlackPixel(dpy, screen));
