@@ -43,9 +43,9 @@ $ export PKG_CONFIG_PATH=/opt/X11/share/pkgconfig:/opt/X11/lib/pkgconfig
 $ make
 ```
 
-Linux:
+Linux (required libbsd):
 ```
-$ env CFLAGS=-D_GNU_SOURCE make
+$ env CFLAGS=-D_GNU_SOURCE LDFLAGS=-lbsd make
 ```
 
 Key bindings
