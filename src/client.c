@@ -103,24 +103,31 @@ coma_client_destroy(struct client *client)
 	if (was_active == 0)
 		return;
 
-	if (TAILQ_EMPTY(&frame->clients)) {
+	if (frame_active == frame_popup) {
+		coma_frame_popup();
+		return;
+	}
+
+	if ((next = TAILQ_FIRST(&frame->clients)) == NULL) {
+		if (frame->split != NULL)
+			coma_frame_merge();
+	}
+
+	if (next == NULL) {
 		coma_frame_select_any();
 	} else {
-		next = TAILQ_FIRST(&frame->clients);
-		if (next != NULL) {
-			coma_client_focus(next);
-			coma_frame_bar_update(frame);
-		}
+		coma_client_focus(next);
+		coma_frame_bar_update(frame);
 	}
 }
 
 void
 coma_client_adjust(struct client *client)
 {
-	client->y = COMA_FRAME_GAP;
 	client->w = client->frame->width;
-	client->x = client->frame->offset;
-	client->h = screen_height - (COMA_FRAME_GAP * 2) - COMA_FRAME_BAR;
+	client->h = client->frame->height;
+	client->x = client->frame->x_offset;
+	client->y = client->frame->y_offset;
 
 	coma_client_send_configure(client);
 }

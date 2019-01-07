@@ -21,12 +21,17 @@
 
 #include "coma.h"
 
-#define FRAME_POPUP_ID	0xffff
+static void		frame_bar_create(struct frame *);
+static struct frame	*frame_create(u_int16_t,
+			    u_int16_t, u_int16_t, u_int16_t);
 
-static struct frame	*frame_create(u_int16_t, u_int16_t, u_int16_t);
+static struct frame	*frame_find_left(void);
+static struct frame	*frame_find_right(void);
 
 static struct frame_list	frames;
 
+int				frame_count = -1;
+u_int16_t			frame_offset = 0;
 struct frame			*frame_popup = NULL;
 struct frame			*frame_active = NULL;
 u_int16_t			frame_width = COMA_FRAME_WIDTH_DEFAULT;
@@ -35,32 +40,47 @@ void
 coma_frame_setup(void)
 {
 	struct frame	*frame;
-	u_int16_t	i, count, width, offset;
+	u_int16_t	i, count, width, height, offset, gap;
 
 	TAILQ_INIT(&frames);
 
 	count = 0;
+	gap = COMA_FRAME_GAP;
 	width = screen_width;
+	height = screen_height - (gap * 2) - COMA_FRAME_BAR;
 
 	while (width > frame_width) {
+		if (frame_count != -1 && count == frame_count)
+			break;
 		count++;
 		width -= frame_width;
 	}
 
-	offset = width / 2;
-	if (offset > (COMA_FRAME_GAP * count))
-		offset -= COMA_FRAME_GAP * count;
+	if (frame_offset != 0) {
+		offset = frame_offset;
+	} else {
+		offset = width / 2;
+	}
+
+	if (offset > (gap * count))
+		offset -= gap * count;
 
 	for (i = 0; i < count; i++) {
-		frame = frame_create(i, frame_width, offset);
+		frame = frame_create(frame_width, height, offset, gap);
+		frame->flags = COMA_FRAME_INLIST;
 		TAILQ_INSERT_TAIL(&frames, frame, list);
-		offset += frame_width + COMA_FRAME_GAP;
+		offset += frame_width + gap;
 	}
 
 	frame_active = TAILQ_FIRST(&frames);
 
-	width = screen_width - (COMA_FRAME_GAP * 2);
-	frame_popup = frame_create(FRAME_POPUP_ID, width, COMA_FRAME_GAP);
+	if (frame_offset != 0)
+		offset = frame_offset;
+	else
+		offset = gap;
+
+	width = screen_width - frame_offset - (gap * 2);
+	frame_popup = frame_create(width, height, offset, gap);
 }
 
 void
@@ -89,8 +109,19 @@ coma_frame_popup(void)
 	if (frame_active == frame_popup) {
 		TAILQ_FOREACH(client, &frame_popup->clients, list)
 			coma_client_hide(client);
+
+		if (frame_popup->split != NULL) {
+			TAILQ_FOREACH(client,
+			    &frame_popup->split->clients, list) {
+				coma_client_hide(client);
+			}
+		}
+
 		coma_frame_select_any();
+
 		XUnmapWindow(dpy, frame_popup->bar);
+		if (frame_popup->split != NULL)
+			XUnmapWindow(dpy, frame_popup->split->bar);
 	} else {
 		focus = frame_popup->focus;
 		frame_active = frame_popup;
@@ -98,8 +129,20 @@ coma_frame_popup(void)
 		TAILQ_FOREACH(client, &frame_popup->clients, list)
 			coma_client_unhide(client);
 
+		if (frame_popup->split != NULL) {
+			TAILQ_FOREACH(client,
+			    &frame_popup->split->clients, list) {
+				coma_client_unhide(client);
+			}
+		}
+
 		XMapRaised(dpy, frame_popup->bar);
 		coma_frame_bar_update(frame_popup);
+
+		if (frame_popup->split != NULL) {
+			XMapRaised(dpy, frame_popup->split->bar);
+			coma_frame_bar_update(frame_popup->split);
+		}
 
 		if (focus != NULL)
 			coma_client_focus(focus);
@@ -112,11 +155,10 @@ coma_frame_next(void)
 	struct frame	*next;
 	struct client	*client;
 
-	if (frame_active == frame_popup)
+	if (!(frame_active->flags & COMA_FRAME_INLIST))
 		return;
 
-	next = TAILQ_NEXT(frame_active, list);
-	if (next != NULL) {
+	if ((next = frame_find_right()) != NULL) {
 		frame_active = next;
 
 		if (frame_active->focus == NULL)
@@ -135,11 +177,10 @@ coma_frame_prev(void)
 	struct frame	*prev;
 	struct client	*client;
 
-	if (frame_active == frame_popup)
+	if (!(frame_active->flags & COMA_FRAME_INLIST))
 		return;
 
-	prev = TAILQ_PREV(frame_active, frame_list, list);
-	if (prev != NULL) {
+	if ((prev = frame_find_left()) != NULL) {
 		frame_active = prev;
 
 		if (frame_active->focus == NULL)
@@ -157,6 +198,9 @@ coma_frame_client_next(void)
 {
 	struct client	*next;
 
+	if (frame_active->focus == NULL)
+		return;
+
 	next = TAILQ_PREV(frame_active->focus, client_list, list);
 	if (next == NULL)
 		next = TAILQ_LAST(&frame_active->clients, client_list);
@@ -172,6 +216,9 @@ coma_frame_client_prev(void)
 {
 	struct client	*prev;
 
+	if (frame_active->focus == NULL)
+		return;
+
 	if ((prev = TAILQ_NEXT(frame_active->focus, list)) == NULL)
 		prev = TAILQ_FIRST(&frame_active->clients);
 
@@ -184,21 +231,23 @@ coma_frame_client_prev(void)
 void
 coma_frame_client_move(int which)
 {
-	struct frame	*other;
+	struct frame	*other, *prev;
 	struct client	*c1, *c2, *n1, *n2;
 
-	if (frame_active == frame_popup)
+	if (!(frame_active->flags & COMA_FRAME_INLIST))
 		return;
 
 	if (TAILQ_EMPTY(&frame_active->clients))
 		return;
 
+	prev = frame_active;
+
 	switch (which) {
 	case COMA_CLIENT_MOVE_LEFT:
-		other = TAILQ_PREV(frame_active, frame_list, list);
+		other = frame_find_left();
 		break;
 	case COMA_CLIENT_MOVE_RIGHT:
-		other = TAILQ_NEXT(frame_active, list);
+		other = frame_find_right();
 		break;
 	default:
 		other = NULL;
@@ -228,7 +277,7 @@ coma_frame_client_move(int which)
 		TAILQ_REMOVE(&other->clients, c2, list);
 
 	c1->frame = other;
-	c1->x = other->offset;
+	c1->x = other->x_offset;
 	if (n2 != NULL)
 		TAILQ_INSERT_BEFORE(n2, c1, list);
 	else
@@ -236,7 +285,7 @@ coma_frame_client_move(int which)
 
 	if (c2 != NULL) {
 		c2->frame = frame_active;
-		c2->x = frame_active->offset;
+		c2->x = frame_active->x_offset;
 
 		if (n1 != NULL)
 			TAILQ_INSERT_BEFORE(n1, c2, list);
@@ -250,12 +299,124 @@ coma_frame_client_move(int which)
 		c2->frame->focus = c2;
 		coma_client_adjust(c2);
 		XRaiseWindow(dpy, c2->window);
-		coma_frame_bar_update(c2->frame);
 	}
 
 	frame_active = other;
 	coma_client_focus(c1);
-	coma_frame_bar_update(c1->frame);
+
+	coma_frame_bar_update(prev);
+	coma_frame_bar_update(frame_active);
+}
+
+void
+coma_frame_split(void)
+{
+	struct frame	*frame;
+	struct client	*client;
+	u_int16_t	height, y;
+
+	if (frame_active == frame_popup)
+		return;
+
+	if (frame_active->split != NULL)
+		return;
+
+	height = frame_active->height / 2 - COMA_FRAME_GAP;
+	y = (frame_active->height / 2) + COMA_FRAME_BAR;
+
+	frame = frame_create(frame_active->width, height,
+	    frame_active->x_offset, y);
+
+	if (frame_active->flags & COMA_FRAME_INLIST)
+		TAILQ_INSERT_TAIL(&frames, frame, list);
+
+	frame->split = frame_active;
+	frame->flags = frame_active->flags;
+
+	frame_active->split = frame;
+	frame_active->height = height;
+
+	frame_bar_create(frame_active);
+	frame_bar_create(frame);
+
+	TAILQ_FOREACH(client, &frame_active->clients, list)
+		coma_client_adjust(client);
+
+	coma_frame_bar_update(frame);
+	coma_frame_bar_update(frame_active);
+
+	frame_active = frame;
+	coma_spawn_terminal();
+}
+
+void
+coma_frame_merge(void)
+{
+	struct frame	*survives, *dies;
+	struct client	*client, *focus, *next;
+
+	if (frame_active->split == NULL)
+		return;
+
+	if (frame_active->y_offset < frame_active->split->y_offset) {
+		survives = frame_active;
+		dies = frame_active->split;
+	} else {
+		dies = frame_active;
+		survives = frame_active->split;
+	}
+
+	focus = dies->focus;
+
+	for (client = TAILQ_FIRST(&dies->clients);
+	    client != NULL; client = next) {
+		next = TAILQ_NEXT(client, list);
+		TAILQ_REMOVE(&dies->clients, client, list);
+
+		client->frame = survives;
+		TAILQ_INSERT_TAIL(&survives->clients, client, list);
+	}
+
+	if (dies->flags & COMA_FRAME_INLIST)
+		TAILQ_REMOVE(&frames, dies, list);
+
+	XDestroyWindow(dpy, dies->bar);
+	XftDrawDestroy(dies->xft_draw);
+	free(dies);
+
+	survives->split = NULL;
+	survives->height = screen_height -
+	    (COMA_FRAME_GAP * 2) - COMA_FRAME_BAR;
+
+	frame_active = survives;
+
+	TAILQ_FOREACH(client, &frame_active->clients, list)
+		coma_client_adjust(client);
+
+	if (focus != NULL)
+		coma_client_focus(focus);
+
+	frame_bar_create(frame_active);
+	coma_frame_bar_update(frame_active);
+}
+
+void
+coma_frame_split_next(void)
+{
+	struct client		*client;
+
+	if (frame_active->split == NULL)
+		return;
+
+	frame_active = frame_active->split;
+
+	if (frame_active->focus == NULL)
+		client = TAILQ_FIRST(&frame_active->clients);
+	else
+		client = frame_active->focus;
+
+	if (client != NULL)
+		coma_client_focus(client);
 }
 
 void
@@ -304,48 +465,26 @@ coma_frame_find_client(Window window)
 			return (client);
 	}
 
+	if (frame_popup->split != NULL) {
+		TAILQ_FOREACH(client, &frame_popup->split->clients, list) {
+			if (client->window == window)
+				return (client);
+		}
+	}
+
 	return (NULL);
 }
 
 void
 coma_frame_bars_create(void)
 {
-	Window			root;
-	XftColor		*color;
 	struct frame		*frame;
-	int			screen;
-	Visual			*visual;
-	Colormap		colormap;
-	u_int16_t		y_offset;
 
-	screen = DefaultScreen(dpy);
-	root = DefaultRootWindow(dpy);
+	TAILQ_FOREACH(frame, &frames, list)
+		frame_bar_create(frame);
 
-	visual = DefaultVisual(dpy, screen);
-	colormap = DefaultColormap(dpy, screen);
-
-	color = coma_wm_xftcolor(COMA_WM_COLOR_FRAME_BAR);
-	y_offset = screen_height - COMA_FRAME_GAP - COMA_FRAME_BAR;
-
-	frame_popup->bar = XCreateSimpleWindow(dpy, root,
-	    frame_popup->offset, y_offset, frame_popup->width + 2,
-	    COMA_FRAME_BAR, 0, WhitePixel(dpy, screen), color->pixel);
-
-	if ((frame_popup->xft_draw = XftDrawCreate(dpy,
-	    frame_popup->bar, visual, colormap)) == NULL)
-		fatal("XftDrawCreate failed");
-
-	TAILQ_FOREACH(frame, &frames, list) {
-		frame->bar = XCreateSimpleWindow(dpy, root,
-		    frame->offset, y_offset, frame->width + 2,
-		    COMA_FRAME_BAR, 0, WhitePixel(dpy, screen), color->pixel);
-
-		if ((frame->xft_draw = XftDrawCreate(dpy,
-		    frame->bar, visual, colormap)) == NULL)
-			fatal("XftDrawCreate failed");
-
-		XMapWindow(dpy, frame->bar);
-	}
+	frame_bar_create(frame_popup);
+	XUnmapWindow(dpy, frame_popup->bar);
 
 	coma_frame_bars_update();
 }
@@ -416,18 +555,87 @@ coma_frame_bar_update(struct frame *frame)
 }
 
 static struct frame *
-frame_create(u_int16_t id, u_int16_t width, u_int16_t offset)
+frame_create(u_int16_t width, u_int16_t height, u_int16_t x, u_int16_t y)
 {
 	struct frame		*frame;
 
 	frame = coma_calloc(1, sizeof(*frame));
 
-	frame->id = id;
 	frame->bar = None;
+	frame->x_offset = x;
+	frame->y_offset = y;
+
 	frame->width = width;
-	frame->offset = offset;
+	frame->height = height;
+
+	frame->screen = DefaultScreen(dpy);
+	frame->visual = DefaultVisual(dpy, frame->screen);
+	frame->colormap = DefaultColormap(dpy, frame->screen);
 
 	TAILQ_INIT(&frame->clients);
 
 	return (frame);
+}
+
+static void
+frame_bar_create(struct frame *frame)
+{
+	XftColor	*color;
+	u_int16_t	y_offset;
+
+	if (frame->bar != None) {
+		XDestroyWindow(dpy, frame->bar);
+		XftDrawDestroy(frame->xft_draw);
+	}
+
+	y_offset = frame->y_offset + frame->height;
+	color = coma_wm_xftcolor(COMA_WM_COLOR_FRAME_BAR);
+
+	frame->bar = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy),
+	    frame->x_offset, y_offset, frame->width + 2,
+	    COMA_FRAME_BAR, 0, WhitePixel(dpy, frame->screen), color->pixel);
+
+	if ((frame->xft_draw = XftDrawCreate(dpy,
+	    frame->bar, frame->visual, frame->colormap)) == NULL)
+		fatal("XftDrawCreate failed");
+
+	XMapWindow(dpy, frame->bar);
+}
+
+static struct frame *
+frame_find_left(void)
+{
+	struct frame	*frame, *candidate;
+
+	candidate = NULL;
+
+	TAILQ_FOREACH_REVERSE(frame, &frames, frame_list, list) {
+		if (frame->x_offset < frame_active->x_offset) {
+			if (candidate == NULL)
+				candidate = frame;
+			if (frame->y_offset == frame_active->y_offset)
+				return (frame);
+		}
+	}
+
+	return (candidate);
+}
+
+static struct frame *
+frame_find_right(void)
+{
+	struct frame	*frame, *candidate;
+
+	candidate = NULL;
+
+	TAILQ_FOREACH(frame, &frames, list) {
+		if (frame->x_offset > frame_active->x_offset) {
+			if (candidate == NULL)
+				candidate = frame;
+			if (frame->y_offset == frame_active->y_offset)
+				return (frame);
+		}
+	}
+
+	return (candidate);
 }

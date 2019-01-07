@@ -36,7 +36,9 @@ usage(void)
 {
 	printf("Help for coma %s\n", COMA_VERSION);
 	printf("\n");
+	printf("-c\tNumber of frames to create\n");
 	printf("-f\tFrame width, default (80) or large (161))\n");
+	printf("-o\tOffset in pixels where frames start\n");
 	printf("-w\tSpecify frame width yourself\n");
 	printf("\n");
 	printf("Mail bugs and patches to joris@coders.se\n");
@@ -50,14 +52,21 @@ main(int argc, char *argv[])
 	struct sigaction	sa;
 	u_int16_t		fw;
 	char			**cargv;
-	int			ch, width, fflag;
+	int			ch, width, fflag, tmp;
 
 	fflag = 0;
 	width = -1;
 	cargv = argv;
 
-	while ((ch = getopt(argc, argv, "hf:w:")) != -1) {
+	while ((ch = getopt(argc, argv, "c:hf:o:w:")) != -1) {
 		switch (ch) {
+		case 'c':
+			frame_count = atoi(optarg);
+			if (frame_count <= 0) {
+				fatal("frame count of %d is probably bad",
+				    frame_count);
+			}
+			break;
 		case 'f':
 			fflag = 1;
 			if (!strcmp(optarg, "default")) {
@@ -68,6 +77,14 @@ main(int argc, char *argv[])
 				fatal("unknown frame type %s (default|large)",
 				    optarg);
 			}
+			break;
+		case 'o':
+			tmp = atoi(optarg);
+			if (tmp <= 0 || tmp >= USHRT_MAX) {
+				fatal("offset %d is probably not what you want",
+				    tmp);
+			}
+			frame_offset = tmp;
 			break;
 		case 'w':
 			/* XXX */

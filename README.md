@@ -78,6 +78,14 @@ prefix-i     = move active client to the frame on the left
 
 prefix-o     = move active client to the frame on the right
 
+prefix-s     = split frame
+
+prefix-m     = merge frame back together
+
+prefix-Up    = move to upper part in a split frame
+
+prefix-Down  = move to lower part in a split frame
+
 Screenshots
 -----------
 

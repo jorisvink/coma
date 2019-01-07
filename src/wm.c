@@ -280,6 +280,16 @@ wm_handle_prefix(XKeyEvent *prefix)
 	case XK_Right:
 		coma_frame_next();
 		break;
+	case XK_Up:
+	case XK_Down:
+		coma_frame_split_next();
+		break;
+	case XK_m:
+		coma_frame_merge();
+		break;
+	case XK_s:
+		coma_frame_split();
+		break;
 	case XK_k:
 		coma_client_kill_active();
 		break;

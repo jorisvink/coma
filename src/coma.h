@@ -70,15 +70,25 @@ struct client {
 
 TAILQ_HEAD(client_list, client);
 
+#define COMA_FRAME_INLIST	0x0001
+
 struct frame {
+	int			screen;
+	int			flags;
+
 	Window			bar;
+	Visual			*visual;
+	Colormap		colormap;
 	XftDraw			*xft_draw;
 
-	u_int16_t		id;
 	u_int16_t		width;
-	u_int16_t		offset;
+	u_int16_t		height;
+	u_int16_t		x_offset;
+	u_int16_t		y_offset;
+
 	struct client		*focus;
 	struct client_list	clients;
+	struct frame		*split;
 
 	TAILQ_ENTRY(frame)	list;
 };
@@ -88,9 +98,12 @@ TAILQ_HEAD(frame_list, frame);
 extern Display			*dpy;
 extern XftFont			*font;
 extern int			restart;
+extern int			frame_count;
 extern u_int16_t		frame_width;
+extern u_int16_t		frame_offset;
 extern u_int16_t		screen_width;
 extern u_int16_t		screen_height;
+extern struct frame		*frame_popup;
 extern struct frame		*frame_active;
 extern struct client		*client_active;
 extern volatile sig_atomic_t	sig_recv;
@@ -112,7 +125,10 @@ void		coma_frame_prev(void);
 void		coma_frame_next(void);
 void		coma_frame_setup(void);
 void		coma_frame_popup(void);
+void		coma_frame_split(void);
+void		coma_frame_merge(void);
 void		coma_frame_cleanup(void);
+void		coma_frame_split_next(void);
 void		coma_frame_client_move(int);
 void		coma_frame_select_any(void);
 void		coma_frame_client_prev(void);
