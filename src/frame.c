@@ -75,6 +75,10 @@ coma_frame_cleanup(void)
 		XftDrawDestroy(frame->xft_draw);
 		free(frame);
 	}
+
+	XDestroyWindow(dpy, frame_popup->bar);
+	XftDrawDestroy(frame_popup->xft_draw);
+	free(frame_popup);
 }
 
 void
@@ -86,12 +90,16 @@ coma_frame_popup(void)
 		TAILQ_FOREACH(client, &frame_popup->clients, list)
 			coma_client_hide(client);
 		coma_frame_select_any();
+		XUnmapWindow(dpy, frame_popup->bar);
 	} else {
 		focus = frame_popup->focus;
 		frame_active = frame_popup;
 
 		TAILQ_FOREACH(client, &frame_popup->clients, list)
 			coma_client_unhide(client);
+
+		XMapRaised(dpy, frame_popup->bar);
+		coma_frame_bar_update(frame_popup);
 
 		if (focus != NULL)
 			coma_client_focus(focus);
@@ -319,6 +327,14 @@ coma_frame_bars_create(void)
 	color = coma_wm_xftcolor(COMA_WM_COLOR_FRAME_BAR);
 	y_offset = screen_height - COMA_FRAME_GAP - COMA_FRAME_BAR;
 
+	frame_popup->bar = XCreateSimpleWindow(dpy, root,
+	    frame_popup->offset, y_offset, frame_popup->width + 2,
+	    COMA_FRAME_BAR, 0, WhitePixel(dpy, screen), color->pixel);
+
+	if ((frame_popup->xft_draw = XftDrawCreate(dpy,
+	    frame_popup->bar, visual, colormap)) == NULL)
+		fatal("XftDrawCreate failed");
+
 	TAILQ_FOREACH(frame, &frames, list) {
 		frame->bar = XCreateSimpleWindow(dpy, root,
 		    frame->offset, y_offset, frame->width + 2,
@@ -341,6 +357,8 @@ coma_frame_bars_update(void)
 
 	TAILQ_FOREACH(frame, &frames, list)
 		coma_frame_bar_update(frame);
+
+	coma_frame_bar_update(frame_popup);
 }
 
 void
@@ -348,8 +366,8 @@ coma_frame_bar_update(struct frame *frame)
 {
 	XGlyphInfo		gi;
 	size_t			slen;
-	char			buf[6];
 	u_int16_t		offset;
+	char			buf[32];
 	struct client		*client;
 	int			len, idx;
 	XftColor		*active, *inactive, *color;
@@ -367,6 +385,15 @@ coma_frame_bar_update(struct frame *frame)
 
 	XClearWindow(dpy, frame->bar);
 
+	if (frame == frame_popup) {
+		(void)strlcpy(buf, "[popup bar]", sizeof(buf));
+		slen = strlen(buf);
+		XftTextExtentsUtf8(dpy, font, (const FcChar8 *)buf, slen, &gi);
+		XftDrawStringUtf8(frame->xft_draw, active, font,
+		    offset, 15, (const FcChar8 *)buf, slen);
+		offset += gi.width + 4;
+	}
+
 	TAILQ_FOREACH_REVERSE(client, &frame->clients, client_list, list) {
 		len = snprintf(buf, sizeof(buf), "[%u]", idx);
 		if (len == -1 || (size_t)len >= sizeof(buf))
@@ -379,10 +406,10 @@ coma_frame_bar_update(struct frame *frame)
 			color = inactive;
 
 		slen = strlen(buf);
-		XftTextExtentsUtf8(dpy, font, (const FcChar8 *)buf, len, &gi);
+		XftTextExtentsUtf8(dpy, font, (const FcChar8 *)buf, slen, &gi);
 
 		XftDrawStringUtf8(frame->xft_draw, color, font,
-		    offset, 15, (const FcChar8 *)buf, strlen(buf));
+		    offset, 15, (const FcChar8 *)buf, slen);
 
 		offset += gi.width + 4;
 	}
