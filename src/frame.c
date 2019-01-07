@@ -18,6 +18,11 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+
+#if defined(__linux__)
+#include <bsd/string.h>
+#endif
 
 #include "coma.h"
 
