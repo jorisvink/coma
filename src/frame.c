@@ -456,10 +456,14 @@ void
 coma_frame_mouseover(u_int16_t x, u_int16_t y)
 {
 	struct frame		*frame;
-	struct client		*client;
+	struct client		*client, *prev;
+
+	if (frame_active == frame_popup)
+		return;
 
 	frame = NULL;
 	client = NULL;
+	prev = frame_active->focus;
 
 	TAILQ_FOREACH(frame, &frames, list) {
 		if (x >= frame->x_offset &&
@@ -478,7 +482,7 @@ coma_frame_mouseover(u_int16_t x, u_int16_t y)
 	else
 		client = TAILQ_FIRST(&frame_active->clients);
 
-	if (client != NULL)
+	if (client != NULL && prev != client)
 		coma_client_focus(client);
 }
 
