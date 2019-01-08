@@ -26,6 +26,7 @@
 
 #include "coma.h"
 
+static void		frame_focus(struct frame *);
 static void		frame_bar_create(struct frame *);
 static struct frame	*frame_create(u_int16_t,
 			    u_int16_t, u_int16_t, u_int16_t);
@@ -158,44 +159,24 @@ void
 coma_frame_next(void)
 {
 	struct frame	*next;
-	struct client	*client;
 
 	if (!(frame_active->flags & COMA_FRAME_INLIST))
 		return;
 
-	if ((next = frame_find_right()) != NULL) {
-		frame_active = next;
-
-		if (frame_active->focus == NULL)
-			client = TAILQ_FIRST(&frame_active->clients);
-		else
-			client = frame_active->focus;
-
-		if (client != NULL)
-			coma_client_focus(client);
-	}
+	if ((next = frame_find_right()) != NULL)
+		frame_focus(next);
 }
 
 void
 coma_frame_prev(void)
 {
 	struct frame	*prev;
-	struct client	*client;
 
 	if (!(frame_active->flags & COMA_FRAME_INLIST))
 		return;
 
-	if ((prev = frame_find_left()) != NULL) {
-		frame_active = prev;
-
-		if (frame_active->focus == NULL)
-			client = TAILQ_FIRST(&frame_active->clients);
-		else
-			client = frame_active->focus;
-
-		if (client != NULL)
-			coma_client_focus(client);
-	}
+	if ((prev = frame_find_left()) != NULL)
+		frame_focus(prev);
 }
 
 void
@@ -408,27 +389,16 @@ coma_frame_merge(void)
 void
 coma_frame_split_next(void)
 {
-	struct client		*client;
-
 	if (frame_active->split == NULL)
 		return;
 
-	frame_active = frame_active->split;
-
-	if (frame_active->focus == NULL)
-		client = TAILQ_FIRST(&frame_active->clients);
-	else
-		client = frame_active->focus;
-
-	if (client != NULL)
-		coma_client_focus(client);
+	frame_focus(frame_active->split);
 }
 
 void
 coma_frame_select_any(void)
 {
 	struct frame	*frame;
-	struct client	*client;
 
 	frame = NULL;
 
@@ -441,15 +411,7 @@ coma_frame_select_any(void)
 	if (frame == NULL)
 		frame = TAILQ_FIRST(&frames);
 
-	frame_active = frame;
-
-	if (frame->focus == NULL)
-		client = TAILQ_FIRST(&frame_active->clients);
-	else
-		client = frame->focus;
-
-	if (client != NULL)
-		coma_client_focus(client);
+	frame_focus(frame);
 }
 
 void
@@ -591,6 +553,20 @@ coma_frame_bar_update(struct frame *frame)
 
 		offset += gi.width + 4;
 	}
+}
+
+static void
+frame_focus(struct frame *frame)
+{
+	struct client		*client;
+
+	frame_active = frame;
+
+	if ((client = frame->focus) == NULL)
+		client = TAILQ_FIRST(&frame->clients);
+
+	if (client != NULL)
+		client_frame_focus(client);
 }
 
 static struct frame *
