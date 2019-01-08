@@ -90,7 +90,10 @@ Screenshots
 -----------
 
 Default frame:
-![Default](/screenshots/default.png?raw=true)
+![Default](https://git.kore.io/coma-default.png?raw=true)
 
 Large frame:
-![Large](/screenshots/large.png?raw=true)
+![Large](https://git.kore.io/coma-large.png?raw=true)
+
+Split:
+![Split](https://git.kore.io/coma-split.png?raw=true)
