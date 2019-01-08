@@ -452,6 +452,36 @@ coma_frame_select_any(void)
 		coma_client_focus(client);
 }
 
+void
+coma_frame_mouseover(u_int16_t x, u_int16_t y)
+{
+	struct frame		*frame;
+	struct client		*client;
+
+	frame = NULL;
+	client = NULL;
+
+	TAILQ_FOREACH(frame, &frames, list) {
+		if (x >= frame->x_offset &&
+		    x <= frame->x_offset + frame->width &&
+		    y >= frame->y_offset &&
+		    y <= frame->y_offset + frame->height)
+			break;
+	}
+
+	if (frame == NULL)
+		return;
+
+	frame_active = frame;
+	if (frame_active->focus != NULL)
+		client = frame_active->focus;
+	else
+		client = TAILQ_FIRST(&frame_active->clients);
+
+	if (client != NULL)
+		coma_client_focus(client);
+}
+
 struct client *
 coma_frame_find_client(Window window)
 {

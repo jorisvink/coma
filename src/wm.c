@@ -30,6 +30,7 @@ static void	wm_teardown(void);
 static void	wm_screen_init(void);
 
 static void	wm_handle_prefix(XKeyEvent *);
+static void	wm_mouse_motion(XMotionEvent *);
 
 static void	wm_window_map(XMapRequestEvent *);
 static void	wm_window_destroy(XDestroyWindowEvent *);
@@ -76,8 +77,10 @@ coma_wm_run(void)
 {
 	XEvent			evt;
 	struct pollfd		pfd[1];
+	Time			motion;
 	int			running, ret;
 
+	motion = 0;
 	running = 1;
 
 	while (running) {
@@ -114,6 +117,9 @@ coma_wm_run(void)
 			XNextEvent(dpy, &evt);
 
 			switch (evt.type) {
+			case MotionNotify:
+				wm_mouse_motion(&evt.xmotion);
+				break;
 			case DestroyNotify:
 				wm_window_destroy(&evt.xdestroywindow);
 				break;
@@ -195,7 +201,8 @@ wm_screen_init(void)
 
 	XSelectInput(dpy, root,
 	    SubstructureRedirectMask | SubstructureNotifyMask |
-	    EnterWindowMask | LeaveWindowMask | KeyPressMask);
+	    EnterWindowMask | LeaveWindowMask | KeyPressMask |
+	    PointerMotionMask);
 
 	coma_frame_setup();
 	coma_wm_register_prefix(root);
@@ -301,6 +308,18 @@ wm_handle_prefix(XKeyEvent *prefix)
 
 	if (client == client_active)
 		XSetInputFocus(dpy, focus, RevertToPointerRoot, CurrentTime);
+}
+
+static void
+wm_mouse_motion(XMotionEvent *evt)
+{
+	static Time		last = 0;
+
+	if ((evt->time - last) <= (1000 / 60))
+		return;
+
+	last = evt->time;
+	coma_frame_mouseover(evt->x, evt->y);
 }
 
 static void
