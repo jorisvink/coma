@@ -30,6 +30,7 @@ static void	wm_teardown(void);
 static void	wm_screen_init(void);
 
 static void	wm_handle_prefix(XKeyEvent *);
+static void	wm_mouse_click(XButtonEvent *);
 static void	wm_mouse_motion(XMotionEvent *);
 
 static void	wm_window_map(XMapRequestEvent *);
@@ -117,6 +118,9 @@ coma_wm_run(void)
 			XNextEvent(dpy, &evt);
 
 			switch (evt.type) {
+			case ButtonRelease:
+				wm_mouse_click(&evt.xbutton);
+				break;
 			case MotionNotify:
 				wm_mouse_motion(&evt.xmotion);
 				break;
@@ -308,6 +312,12 @@ wm_handle_prefix(XKeyEvent *prefix)
 
 	if (client == client_active)
 		XSetInputFocus(dpy, focus, RevertToPointerRoot, CurrentTime);
+}
+
+static void
+wm_mouse_click(XButtonEvent *evt)
+{
+	coma_frame_bar_click(evt->window, evt->x);
 }
 
 static void

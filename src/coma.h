@@ -65,6 +65,9 @@ struct client {
 	u_int16_t		y;
 	u_int16_t		bw;
 
+	u_int16_t		fbo;
+	u_int16_t		fbw;
+
 	TAILQ_ENTRY(client)	list;
 };
 
@@ -136,6 +139,7 @@ void		coma_frame_client_next(void);
 void		coma_frame_bars_create(void);
 void		coma_frame_bars_update(void);
 void		coma_frame_bar_update(struct frame *);
+void		coma_frame_bar_click(Window, u_int16_t);
 void		coma_frame_mouseover(u_int16_t, u_int16_t);
 
 void		coma_client_init(void);

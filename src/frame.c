@@ -551,7 +551,40 @@ coma_frame_bar_update(struct frame *frame)
 		XftDrawStringUtf8(frame->xft_draw, color, font,
 		    offset, 15, (const FcChar8 *)buf, slen);
 
+		client->fbo = offset;
+		client->fbw = gi.width;
+
 		offset += gi.width + 4;
+	}
+}
+
+void
+coma_frame_bar_click(Window bar, u_int16_t offset)
+{
+	struct frame		*frame;
+	struct client		*client;
+
+	frame = NULL;
+	TAILQ_FOREACH(frame, &frames, list) {
+		if (frame->bar == bar)
+			break;
+	}
+
+	if (frame == NULL)
+		return;
+
+	client = NULL;
+
+	TAILQ_FOREACH(client, &frame->clients, list) {
+		if (offset >= client->fbo &&
+		    offset <= client->fbo + client->fbw)
+			break;
+	}
+
+	if (client != NULL) {
+		frame->focus = client;
+		frame_focus(frame);
+		coma_frame_bar_update(frame);
 	}
 }
 
@@ -566,7 +599,7 @@ frame_focus(struct frame *frame)
 		client = TAILQ_FIRST(&frame->clients);
 
 	if (client != NULL)
-		client_frame_focus(client);
+		coma_client_focus(client);
 }
 
 static struct frame *
@@ -609,6 +642,8 @@ frame_bar_create(struct frame *frame)
 	frame->bar = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy),
 	    frame->x_offset, y_offset, frame->width + 2,
 	    COMA_FRAME_BAR, 0, WhitePixel(dpy, frame->screen), color->pixel);
+
+	XSelectInput(dpy, frame->bar, ButtonReleaseMask);
 
 	if ((frame->xft_draw = XftDrawCreate(dpy,
 	    frame->bar, frame->visual, frame->colormap)) == NULL)
