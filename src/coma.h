@@ -74,20 +74,27 @@ struct client {
 TAILQ_HEAD(client_list, client);
 
 #define COMA_FRAME_INLIST	0x0001
+#define COMA_FRAME_ZOOMED	0x0002
 
 struct frame {
-	int			screen;
+	u_int16_t		id;
 	int			flags;
+	int			screen;
 
 	Window			bar;
 	Visual			*visual;
 	Colormap		colormap;
 	XftDraw			*xft_draw;
 
-	u_int16_t		width;
-	u_int16_t		height;
-	u_int16_t		x_offset;
-	u_int16_t		y_offset;
+	u_int16_t		w;
+	u_int16_t		h;
+	u_int16_t		x;
+	u_int16_t		y;
+
+	u_int16_t		orig_w;
+	u_int16_t		orig_h;
+	u_int16_t		orig_x;
+	u_int16_t		orig_y;
 
 	struct client		*focus;
 	struct client_list	clients;
@@ -126,6 +133,7 @@ void		coma_wm_register_prefix(Window);
 
 void		coma_frame_prev(void);
 void		coma_frame_next(void);
+void		coma_frame_zoom(void);
 void		coma_frame_setup(void);
 void		coma_frame_popup(void);
 void		coma_frame_split(void);

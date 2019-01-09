@@ -124,10 +124,10 @@ coma_client_destroy(struct client *client)
 void
 coma_client_adjust(struct client *client)
 {
-	client->w = client->frame->width;
-	client->h = client->frame->height;
-	client->x = client->frame->x_offset;
-	client->y = client->frame->y_offset;
+	client->w = client->frame->w;
+	client->h = client->frame->h;
+	client->x = client->frame->x;
+	client->y = client->frame->y;
 
 	coma_client_send_configure(client);
 }

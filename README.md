@@ -86,6 +86,8 @@ prefix-Up    = move to upper part in a split frame
 
 prefix-Down  = move to lower part in a split frame
 
+prefix-z     = zoom/unzoom current frame to cover all frames
+
 Screenshots
 -----------
 

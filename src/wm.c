@@ -260,8 +260,10 @@ wm_handle_prefix(XKeyEvent *prefix)
 	XSetInputFocus(dpy, key_input, RevertToNone, CurrentTime);
 	XMaskEvent(dpy, KeyPressMask, &evt);
 
-	if (evt.type != KeyPress)
+	if (evt.type != KeyPress) {
+		XSetInputFocus(dpy, focus, RevertToPointerRoot, CurrentTime);
 		return;
+	}
 
 	sym = XkbKeycodeToKeysym(dpy, evt.xkey.keycode, 0, 0);
 	switch (sym) {
@@ -307,6 +309,9 @@ wm_handle_prefix(XKeyEvent *prefix)
 	case XK_r:
 		restart = 1;
 		sig_recv = SIGQUIT;
+		break;
+	case XK_z:
+		coma_frame_zoom();
 		break;
 	}
 
