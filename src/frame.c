@@ -347,6 +347,8 @@ coma_frame_split(void)
 	frame_active->split = frame;
 	frame_active->h = height;
 
+	frame_active->orig_h = frame_active->h;
+
 	frame_bar_create(frame_active);
 	frame_bar_create(frame);
 
@@ -397,6 +399,7 @@ coma_frame_merge(void)
 
 	survives->split = NULL;
 	survives->h = screen_height - (COMA_FRAME_GAP * 2) - COMA_FRAME_BAR;
+	survives->orig_h = survives->h;
 
 	frame_active = survives;
 
