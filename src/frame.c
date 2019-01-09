@@ -345,7 +345,7 @@ coma_frame_split(void)
 	frame->flags = frame_active->flags;
 
 	frame_active->split = frame;
-	frame_active->h = height;
+	frame_active->h = height - COMA_FRAME_GAP;
 
 	frame_active->orig_h = frame_active->h;
 
