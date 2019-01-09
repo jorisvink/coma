@@ -450,6 +450,9 @@ coma_frame_mouseover(u_int16_t x, u_int16_t y)
 	if (frame_active == frame_popup)
 		return;
 
+	if (frame_active->flags & COMA_FRAME_ZOOMED)
+		return;
+
 	frame = NULL;
 	client = NULL;
 	prev = frame_active->focus;
