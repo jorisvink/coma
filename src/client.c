@@ -142,19 +142,30 @@ coma_client_map(struct client *client)
 void
 coma_client_hide(struct client *client)
 {
-	XUnmapWindow(dpy, client->window);
+	if (!(client->flags & COMA_CLIENT_HIDDEN)) {
+		client->flags |= COMA_CLIENT_HIDDEN;
+		XUnmapWindow(dpy, client->window);
+	}
 }
 
 void
 coma_client_unhide(struct client *client)
 {
-	coma_client_map(client);
+	if (client->flags & COMA_CLIENT_HIDDEN) {
+		client->flags &= ~COMA_CLIENT_HIDDEN;
+		coma_client_map(client);
+	}
 }
 
 void
 coma_client_focus(struct client *client)
 {
 	XftColor	*color;
+
+	if (client->flags & COMA_CLIENT_HIDDEN) {
+		XMapWindow(dpy, client->window);
+		client->flags &= ~COMA_CLIENT_HIDDEN;
+	}
 
 	XRaiseWindow(dpy, client->window);
 	XSetInputFocus(dpy, client->window, RevertToPointerRoot, CurrentTime);

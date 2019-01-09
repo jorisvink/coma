@@ -524,7 +524,7 @@ coma_frame_zoom(void)
 	}
 
 	TAILQ_FOREACH(client, &frame_active->clients, list) {
-		XUnmapWindow(dpy, client->window);
+		coma_client_hide(client);
 		coma_client_adjust(client);
 	}
 

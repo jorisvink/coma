@@ -53,8 +53,11 @@
 
 struct frame;
 
+#define COMA_CLIENT_HIDDEN	0x0001
+
 struct client {
 	u_int32_t		id;
+	u_int32_t		flags;
 
 	Window			window;
 	struct frame		*frame;
