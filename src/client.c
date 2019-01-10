@@ -170,11 +170,11 @@ coma_client_focus(struct client *client)
 	XRaiseWindow(dpy, client->window);
 	XSetInputFocus(dpy, client->window, RevertToPointerRoot, CurrentTime);
 
-	color = coma_wm_xftcolor(COMA_WM_COLOR_WIN_ACTIVE);
+	color = coma_wm_color("client-active");
 	XSetWindowBorder(dpy, client->window, color->pixel);
 
 	if (client_active != NULL && client_active->id != client->id) {
-		color = coma_wm_xftcolor(COMA_WM_COLOR_WIN_INACTIVE);
+		color = coma_wm_color("client-inactive");
 		XSetWindowBorder(dpy, client_active->window, color->pixel);
 	}
 

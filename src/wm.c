@@ -26,6 +26,7 @@
 
 #include "coma.h"
 
+static void	wm_restart(void);
 static void	wm_teardown(void);
 static void	wm_screen_init(void);
 
@@ -45,25 +46,62 @@ XftFont		*font = NULL;
 u_int16_t	screen_width = 0;
 u_int16_t	screen_height = 0;
 
-static Window	key_input = None;
-static XftColor	xft_colors[COMA_WM_COLOR_MAX];
+unsigned int	prefix_mod = COMA_MOD_KEY;
+KeySym		prefix_key = COMA_PREFIX_KEY;
 
-/* Must be in sync with the defines COMA_WM_COLOR_* */
-static const char *colors[] = {
-	"#55007a",
-	"#222222",
-	"#55007a",
-	"#ffffff",
-	"#555555",
-	NULL
+static Window	key_input = None;
+
+struct {
+	const char	*name;
+	const char	*rgb;
+	int		allocated;
+	XftColor	color;
+} xft_colors[] = {
+	{ "client-active",		"#55007a",	0,	{ 0 }},
+	{ "client-inactive",		"#222222",	0,	{ 0 }},
+	{ "frame-bar",			"#55007a",	0,	{ 0 }},
+	{ "frame-bar-client-active",	"#ffffff",	0,	{ 0 }},
+	{ "frame-bar-client-inactive",	"#555555",	0,	{ 0 }},
+	{ NULL,				NULL,		0,	{ 0 }},
 };
+
+struct {
+	const char	*name;
+	KeySym		sym;
+	void		(*cb)(void);
+} actions[] = {
+	{ "frame-prev",			XK_h,		coma_frame_prev },
+	{ "frame-next",			XK_l,		coma_frame_next },
+	{ "frame-popup",		XK_space,	coma_frame_popup },
+
+	{ "frame-zoom",			XK_z,	coma_frame_zoom },
+	{ "frame-split",		XK_s,	coma_frame_split },
+	{ "frame-merge",		XK_m,	coma_frame_merge },
+	{ "frame-split-next",		XK_f,	coma_frame_split_next },
+
+	{ "frame-move-client-left",	XK_i,	coma_frame_client_move_left },
+	{ "frame-move-client-right", 	XK_o,	coma_frame_client_move_right },
+
+	{ "coma-restart",		XK_r,	wm_restart },
+	{ "coma-terminal",		XK_c,	coma_spawn_terminal },
+
+	{ "client-kill",		XK_k,	coma_client_kill_active },
+	{ "client-prev",		XK_p,	coma_frame_client_prev },
+	{ "client-next",		XK_n,	coma_frame_client_next },
+
+	{ NULL, 0, NULL }
+};
+
+void
+coma_wm_init(void)
+{
+	if ((dpy = XOpenDisplay(NULL)) == NULL)
+		fatal("failed to open display");
+}
 
 void
 coma_wm_setup(void)
 {
-	if ((dpy = XOpenDisplay(NULL)) == NULL)
-		fatal("failed to open display");
-
 	XSetErrorHandler(wm_error_active);
 	XSelectInput(dpy, DefaultRootWindow(dpy), SubstructureRedirectMask);
 	XSync(dpy, False);
@@ -89,8 +127,11 @@ coma_wm_run(void)
 			switch (sig_recv) {
 			case SIGQUIT:
 			case SIGINT:
+				running = 0;
+				continue;
 			case SIGHUP:
 				running = 0;
+				restart = 1;
 				continue;
 			case SIGCHLD:
 				coma_reap();
@@ -144,12 +185,16 @@ coma_wm_run(void)
 }
 
 XftColor *
-coma_wm_xftcolor(u_int32_t which)
+coma_wm_color(const char *name)
 {
-	if (which >= COMA_WM_COLOR_MAX)
-		fatal("bad color index: %u", which);
+	int		i;
 
-	return (&xft_colors[which]);
+	for (i = 0; xft_colors[i].name != NULL; i++) {
+		if (!strcmp(name, xft_colors[i].name))
+			return (&xft_colors[i].color);
+	}
+
+	return (&xft_colors[0].color);
 }
 
 void
@@ -159,8 +204,60 @@ coma_wm_register_prefix(Window win)
 
 	XUngrabKey(dpy, AnyKey, AnyModifier, win);
 
-	c = XKeysymToKeycode(dpy, COMA_PREFIX_KEY);
-	XGrabKey(dpy, c, ControlMask, win, True, GrabModeAsync, GrabModeAsync);
+	printf("using %lu\n", prefix_key);
+
+	c = XKeysymToKeycode(dpy, prefix_key);
+	XGrabKey(dpy, c, prefix_mod, win, True, GrabModeAsync, GrabModeAsync);
+}
+
+int
+coma_wm_register_action(const char *action, KeySym sym)
+{
+	int		i;
+
+	for (i = 0; actions[i].name != NULL; i++) {
+		if (!strcmp(actions[i].name, action)) {
+			actions[i].sym = sym;
+			return (0);
+		}
+	}
+
+	return (-1);
+}
+
+int
+coma_wm_register_color(const char *name, const char *rgb)
+{
+	Visual		*visual;
+	Colormap	colormap;
+	int		screen, i;
+
+	for (i = 0; xft_colors[i].name != NULL; i++) {
+		if (!strcmp(name, xft_colors[i].name))
+			break;
+	}
+
+	if (xft_colors[i].name == NULL)
+		return (-1);
+
+	screen = DefaultScreen(dpy);
+	visual = DefaultVisual(dpy, screen);
+	colormap = DefaultColormap(dpy, screen);
+
+	if (xft_colors[i].allocated)
+		XftColorFree(dpy, visual, colormap, &xft_colors[i].color);
+
+	XftColorAllocName(dpy, visual, colormap, rgb, &xft_colors[i].color);
+	xft_colors[i].allocated = 1;
+
+	return (0);
+}
+
+static void
+wm_restart(void)
+{
+	restart = 1;
+	sig_recv = SIGQUIT;
 }
 
 static void
@@ -180,7 +277,6 @@ wm_teardown(void)
 static void
 wm_screen_init(void)
 {
-	XftColor	xc;
 	int		screen;
 	Visual		*visual;
 	Colormap	colormap;
@@ -198,9 +294,11 @@ wm_screen_init(void)
 	if ((font = XftFontOpenName(dpy, screen, COMA_WM_FONT)) == NULL)
 		fatal("failed to open %s", COMA_WM_FONT);
 
-	for (idx = 0; idx < COMA_WM_COLOR_MAX; idx++) {
-		XftColorAllocName(dpy, visual, colormap, colors[idx], &xc);
-		xft_colors[idx] = xc;
+	for (idx = 0; xft_colors[idx].name != NULL; idx++) {
+		if (xft_colors[idx].allocated == 0) {
+			XftColorAllocName(dpy, visual, colormap,
+			    xft_colors[idx].rgb, &xft_colors[idx].color);
+		}
 	}
 
 	XSelectInput(dpy, root,
@@ -246,15 +344,15 @@ wm_handle_prefix(XKeyEvent *prefix)
 	XEvent			evt;
 	KeySym			sym;
 	Window			focus;
-	int			revert;
 	struct client		*client;
+	int			revert, i;
 
 	client = client_active;
 	XGetInputFocus(dpy, &focus, &revert);
 
 	sym = XkbKeycodeToKeysym(dpy, prefix->keycode, 0, 0);
 
-	if (sym != COMA_PREFIX_KEY)
+	if (sym != prefix_key)
 		return;
 
 	XSetInputFocus(dpy, key_input, RevertToNone, CurrentTime);
@@ -266,53 +364,12 @@ wm_handle_prefix(XKeyEvent *prefix)
 	}
 
 	sym = XkbKeycodeToKeysym(dpy, evt.xkey.keycode, 0, 0);
-	switch (sym) {
-	case XK_i:
-		coma_frame_client_move(COMA_CLIENT_MOVE_LEFT);
-		break;
-	case XK_o:
-		coma_frame_client_move(COMA_CLIENT_MOVE_RIGHT);
-		break;
-	case XK_space:
-		coma_frame_popup();
-		break;
-	case XK_c:
-		coma_spawn_terminal();
-		break;
-	case XK_p:
-		coma_frame_client_prev();
-		break;
-	case XK_n:
-		coma_frame_client_next();
-		break;
-	case XK_h:
-	case XK_Left:
-		coma_frame_prev();
-		break;
-	case XK_l:
-	case XK_Right:
-		coma_frame_next();
-		break;
-	case XK_Up:
-	case XK_Down:
-		coma_frame_split_next();
-		break;
-	case XK_m:
-		coma_frame_merge();
-		break;
-	case XK_s:
-		coma_frame_split();
-		break;
-	case XK_k:
-		coma_client_kill_active();
-		break;
-	case XK_r:
-		restart = 1;
-		sig_recv = SIGQUIT;
-		break;
-	case XK_z:
-		coma_frame_zoom();
-		break;
+
+	for (i = 0; actions[i].name != NULL; i++) {
+		if (actions[i].sym == sym) {
+			actions[i].cb();
+			break;
+		}
 	}
 
 	if (client == client_active)

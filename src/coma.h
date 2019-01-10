@@ -30,26 +30,13 @@
 
 #define COMA_VERSION			"0.1"
 #define COMA_WM_FONT			"fixed:pixelsize=13"
+
+#define COMA_MOD_KEY			ControlMask
 #define COMA_PREFIX_KEY			XK_t
 
-#define COMA_WM_COLOR_WIN_ACTIVE		0
-#define COMA_WM_COLOR_WIN_INACTIVE		1
-#define COMA_WM_COLOR_FRAME_BAR			2
-#define COMA_WM_COLOR_FRAME_BAR_ACTIVE		3
-#define COMA_WM_COLOR_FRAME_BAR_INACTIVE	4
-#define COMA_WM_COLOR_MAX			5
-
-/* xterm with fixed font is 484 pixels wide (80 columns). */
-#define COMA_FRAME_WIDTH_DEFAULT	484
-
-/* xterm with fixed font 161 columns for tmux sessions. */
-#define COMA_FRAME_WIDTH_LARGE		970
-
-#define COMA_FRAME_GAP			10
-#define COMA_FRAME_BAR			20
-
-#define COMA_CLIENT_MOVE_LEFT		1
-#define COMA_CLIENT_MOVE_RIGHT		2
+#define COMA_FRAME_GAP		10
+#define COMA_FRAME_BAR		20
+#define COMA_FRAME_WIDTH	484
 
 struct frame;
 
@@ -111,7 +98,11 @@ TAILQ_HEAD(frame_list, frame);
 extern Display			*dpy;
 extern XftFont			*font;
 extern int			restart;
+extern unsigned int		prefix_mod;
+extern KeySym			prefix_key;
 extern int			frame_count;
+extern u_int16_t		frame_gap;
+extern u_int16_t		frame_bar;
 extern u_int16_t		frame_width;
 extern u_int16_t		frame_offset;
 extern u_int16_t		screen_width;
@@ -125,14 +116,18 @@ void		fatal(const char *, ...);
 
 void		coma_reap(void);
 void		coma_spawn_terminal(void);
+void		coma_config_parse(const char *);
 
 void		*coma_malloc(size_t);
 void		*coma_calloc(size_t, size_t);
 
 void		coma_wm_run(void);
+void		coma_wm_init(void);
 void		coma_wm_setup(void);
-XftColor	*coma_wm_xftcolor(u_int32_t);
+XftColor	*coma_wm_color(const char *);
 void		coma_wm_register_prefix(Window);
+int		coma_wm_register_action(const char *, KeySym);
+int		coma_wm_register_color(const char *, const char *);
 
 void		coma_frame_prev(void);
 void		coma_frame_next(void);
@@ -143,12 +138,13 @@ void		coma_frame_split(void);
 void		coma_frame_merge(void);
 void		coma_frame_cleanup(void);
 void		coma_frame_split_next(void);
-void		coma_frame_client_move(int);
 void		coma_frame_select_any(void);
 void		coma_frame_client_prev(void);
 void		coma_frame_client_next(void);
 void		coma_frame_bars_create(void);
 void		coma_frame_bars_update(void);
+void		coma_frame_client_move_left(void);
+void		coma_frame_client_move_right(void);
 void		coma_frame_bar_update(struct frame *);
 void		coma_frame_bar_click(Window, u_int16_t);
 void		coma_frame_mouseover(u_int16_t, u_int16_t);

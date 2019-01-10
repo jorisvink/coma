@@ -26,11 +26,15 @@
 
 #include "coma.h"
 
+#define CLIENT_MOVE_LEFT		1
+#define CLIENT_MOVE_RIGHT		2
+
 static void		frame_focus(struct frame *);
 static void		frame_bar_create(struct frame *);
 static struct frame	*frame_create(u_int16_t,
 			    u_int16_t, u_int16_t, u_int16_t);
 
+static void		frame_client_move(int);
 static struct frame	*frame_find_left(void);
 static struct frame	*frame_find_right(void);
 
@@ -42,20 +46,21 @@ u_int16_t			frame_offset = 0;
 u_int16_t			frame_height = 0;
 struct frame			*frame_popup = NULL;
 struct frame			*frame_active = NULL;
-u_int16_t			frame_width = COMA_FRAME_WIDTH_DEFAULT;
+u_int16_t			frame_gap = COMA_FRAME_GAP;
+u_int16_t			frame_bar = COMA_FRAME_BAR;
+u_int16_t			frame_width = COMA_FRAME_WIDTH;
 
 void
 coma_frame_setup(void)
 {
 	struct frame	*frame;
-	u_int16_t	i, count, width, offset, gap, x;
+	u_int16_t	i, count, width, offset, x;
 
 	TAILQ_INIT(&frames);
 
 	count = 0;
-	gap = COMA_FRAME_GAP;
 	width = screen_width - frame_offset;
-	frame_height = screen_height - (gap * 2) - COMA_FRAME_BAR;
+	frame_height = screen_height - (frame_gap * 2) - frame_bar;
 
 	while (width > frame_width) {
 		if (frame_count != -1 && count == frame_count)
@@ -70,18 +75,19 @@ coma_frame_setup(void)
 		offset = width / 2;
 	}
 
-	if (offset > (gap * count))
-		offset -= gap * count;
+	if (offset > (frame_gap * count))
+		offset -= frame_gap * count;
 
 	x = offset;
 	zoom_width = 0;
 
 	for (i = 0; i < count; i++) {
-		frame = frame_create(frame_width, frame_height, offset, gap);
+		frame = frame_create(frame_width,
+		    frame_height, offset, frame_gap);
 		frame->flags = COMA_FRAME_INLIST;
 		TAILQ_INSERT_TAIL(&frames, frame, list);
-		offset += frame_width + gap;
-		zoom_width += frame_width + gap;
+		offset += frame_width + frame_gap;
+		zoom_width += frame_width + frame_gap;
 	}
 
 	if (frame_offset != 0) {
@@ -98,14 +104,14 @@ coma_frame_setup(void)
 			width -= i * 2;
 		}
 	} else {
-		offset = COMA_FRAME_GAP;
-		width = screen_width - (gap * 2);
+		offset = frame_gap;
+		width = screen_width - (frame_gap * 2);
 	}
 
-	frame_popup = frame_create(width, frame_height, offset, gap);
+	frame_popup = frame_create(width, frame_height, offset, frame_gap);
 
 	frame_offset = x;
-	zoom_width -= gap;
+	zoom_width -= frame_gap;
 
 	frame_active = TAILQ_FIRST(&frames);
 }
@@ -241,83 +247,15 @@ coma_frame_client_prev(void)
 }
 
 void
-coma_frame_client_move(int which)
+coma_frame_client_move_left(void)
 {
-	struct frame	*other, *prev;
-	struct client	*c1, *c2, *n1, *n2;
+	frame_client_move(CLIENT_MOVE_LEFT);
+}
 
-	if (!(frame_active->flags & COMA_FRAME_INLIST))
-		return;
-
-	if (TAILQ_EMPTY(&frame_active->clients))
-		return;
-
-	prev = frame_active;
-
-	switch (which) {
-	case COMA_CLIENT_MOVE_LEFT:
-		other = frame_find_left();
-		break;
-	case COMA_CLIENT_MOVE_RIGHT:
-		other = frame_find_right();
-		break;
-	default:
-		other = NULL;
-		break;
-	}
-
-	if (other == NULL)
-		return;
-
-	c1 = frame_active->focus;
-
-	if (other->focus != NULL)
-		c2 = other->focus;
-	else
-		c2 = TAILQ_FIRST(&other->clients);
-
-	n1 = TAILQ_NEXT(c1, list);
-	if (c2 != NULL)
-		n2 = TAILQ_NEXT(c2, list);
-	else
-		n2 = NULL;
-
-	frame_active->focus = NULL;
-	TAILQ_REMOVE(&frame_active->clients, c1, list);
-
-	if (c2 != NULL)
-		TAILQ_REMOVE(&other->clients, c2, list);
-
-	c1->frame = other;
-	c1->x = other->x;
-	if (n2 != NULL)
-		TAILQ_INSERT_BEFORE(n2, c1, list);
-	else
-		TAILQ_INSERT_HEAD(&other->clients, c1, list);
-
-	if (c2 != NULL) {
-		c2->frame = frame_active;
-		c2->x = frame_active->x;
-
-		if (n1 != NULL)
-			TAILQ_INSERT_BEFORE(n1, c2, list);
-		else
-			TAILQ_INSERT_HEAD(&frame_active->clients, c2, list);
-	}
-
-	coma_client_adjust(c1);
-
-	if (c2 != NULL) {
-		c2->frame->focus = c2;
-		coma_client_adjust(c2);
-		XRaiseWindow(dpy, c2->window);
-	}
-
-	frame_active = other;
-	coma_client_focus(c1);
-
-	coma_frame_bar_update(prev);
-	coma_frame_bar_update(frame_active);
+void
+coma_frame_client_move_right(void)
+{
+	frame_client_move(CLIENT_MOVE_RIGHT);
 }
 
 void
@@ -333,8 +271,8 @@ coma_frame_split(void)
 	if (frame_active->split != NULL)
 		return;
 
-	height = frame_active->h / 2 - COMA_FRAME_GAP;
-	y = (frame_active->h / 2) + COMA_FRAME_BAR;
+	height = frame_active->h / 2 - frame_gap;
+	y = (frame_active->h / 2) + frame_bar;
 
 	frame = frame_create(frame_active->w, height, frame_active->x, y);
 
@@ -345,7 +283,7 @@ coma_frame_split(void)
 	frame->flags = frame_active->flags;
 
 	frame_active->split = frame;
-	frame_active->h = height - COMA_FRAME_GAP;
+	frame_active->h = height - frame_gap;
 
 	frame_active->orig_h = frame_active->h;
 
@@ -398,7 +336,7 @@ coma_frame_merge(void)
 	free(dies);
 
 	survives->split = NULL;
-	survives->h = screen_height - (COMA_FRAME_GAP * 2) - COMA_FRAME_BAR;
+	survives->h = screen_height - (frame_gap * 2) - frame_bar;
 	survives->orig_h = survives->h;
 
 	frame_active = survives;
@@ -525,7 +463,7 @@ coma_frame_zoom(void)
 		frame_active->w = zoom_width;
 		frame_active->h = frame_height;
 		frame_active->x = frame_offset;
-		frame_active->y = COMA_FRAME_GAP;
+		frame_active->y = frame_gap;
 		frame_active->flags |= COMA_FRAME_ZOOMED;
 	}
 
@@ -584,8 +522,8 @@ coma_frame_bar_update(struct frame *frame)
 	offset = 5;
 	buf[0] = '\0';
 
-	active = coma_wm_xftcolor(COMA_WM_COLOR_FRAME_BAR_ACTIVE);
-	inactive = coma_wm_xftcolor(COMA_WM_COLOR_FRAME_BAR_INACTIVE);
+	active = coma_wm_color("frame-bar-client-active");
+	inactive = coma_wm_color("frame-bar-client-inactive");
 
 	XClearWindow(dpy, frame->bar);
 
@@ -706,11 +644,11 @@ frame_bar_create(struct frame *frame)
 	}
 
 	y_offset = frame->y + frame->h;
-	color = coma_wm_xftcolor(COMA_WM_COLOR_FRAME_BAR);
+	color = coma_wm_color("frame-bar");
 
 	frame->bar = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy),
 	    frame->x, y_offset, frame->w + 2,
-	    COMA_FRAME_BAR, 0, WhitePixel(dpy, frame->screen), color->pixel);
+	    frame_bar, 0, WhitePixel(dpy, frame->screen), color->pixel);
 
 	XSelectInput(dpy, frame->bar, ButtonReleaseMask);
 
@@ -757,4 +695,84 @@ frame_find_right(void)
 	}
 
 	return (candidate);
+}
+
+static void
+frame_client_move(int which)
+{
+	struct frame	*other, *prev;
+	struct client	*c1, *c2, *n1, *n2;
+
+	if (!(frame_active->flags & COMA_FRAME_INLIST))
+		return;
+
+	if (TAILQ_EMPTY(&frame_active->clients))
+		return;
+
+	prev = frame_active;
+
+	switch (which) {
+	case CLIENT_MOVE_LEFT:
+		other = frame_find_left();
+		break;
+	case CLIENT_MOVE_RIGHT:
+		other = frame_find_right();
+		break;
+	default:
+		other = NULL;
+		break;
+	}
+
+	if (other == NULL)
+		return;
+
+	c1 = frame_active->focus;
+
+	if (other->focus != NULL)
+		c2 = other->focus;
+	else
+		c2 = TAILQ_FIRST(&other->clients);
+
+	n1 = TAILQ_NEXT(c1, list);
+	if (c2 != NULL)
+		n2 = TAILQ_NEXT(c2, list);
+	else
+		n2 = NULL;
+
+	frame_active->focus = NULL;
+	TAILQ_REMOVE(&frame_active->clients, c1, list);
+
+	if (c2 != NULL)
+		TAILQ_REMOVE(&other->clients, c2, list);
+
+	c1->frame = other;
+	c1->x = other->x;
+	if (n2 != NULL)
+		TAILQ_INSERT_BEFORE(n2, c1, list);
+	else
+		TAILQ_INSERT_HEAD(&other->clients, c1, list);
+
+	if (c2 != NULL) {
+		c2->frame = frame_active;
+		c2->x = frame_active->x;
+
+		if (n1 != NULL)
+			TAILQ_INSERT_BEFORE(n1, c2, list);
+		else
+			TAILQ_INSERT_HEAD(&frame_active->clients, c2, list);
+	}
+
+	coma_client_adjust(c1);
+
+	if (c2 != NULL) {
+		c2->frame->focus = c2;
+		coma_client_adjust(c2);
+		XRaiseWindow(dpy, c2->window);
+	}
+
+	frame_active = other;
+	coma_client_focus(c1);
+
+	coma_frame_bar_update(prev);
+	coma_frame_bar_update(frame_active);
 }

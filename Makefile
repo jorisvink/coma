@@ -5,7 +5,7 @@ COMA=coma
 OBJDIR?=obj
 PREFIX?=/usr/local
 
-SRC=	src/coma.c src/client.c src/frame.c src/wm.c
+SRC=	src/coma.c src/client.c src/config.c src/frame.c src/wm.c
 OBJS=	$(SRC:src/%.c=$(OBJDIR)/%.o)
 
 CFLAGS+=-Wall
