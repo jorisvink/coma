@@ -202,8 +202,6 @@ coma_wm_register_prefix(Window win)
 
 	XUngrabKey(dpy, AnyKey, AnyModifier, win);
 
-	printf("using %lu\n", prefix_key);
-
 	c = XKeysymToKeycode(dpy, prefix_key);
 	XGrabKey(dpy, c, prefix_mod, win, True, GrabModeAsync, GrabModeAsync);
 }
