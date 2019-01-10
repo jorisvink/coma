@@ -1,0 +1,105 @@
+.Dd
+.Dt COMA 1
+.Os
+.Sh NAME
+.Nm coma
+.Nd a keyboard driven, tiling window manager
+.Sh SYNOPSIS
+.Nm
+.Op Fl c
+.Ar config
+.Sh DESCRIPTION
+.Nm
+is a keyboard driven tiling window manager. By default the window manager
+will attempt to create 484 pixel frames on your screen. This is wide enough
+to fit 80-column xterms inside of them when using the default 'fixed' font.
+.Pp
+These defaults can be overwritten using the configuration file.
+.Sh CONFIGURATION
+The configuration file by default exists in
+.An $HOME/.comarc
+but can be given
+on the command line with the
+.Op Fl c
+flag.
+.Pp
+The following options can be configured:
+.Bl -tag -width Ds
+.It Ic frame-gap (default: 10)
+The gap between frames and from the top and bottom of the screen.
+.It Ic frame-bar (default: 20)
+The height of the bar at the bottom of the frames.
+.It Ic frame-count (default: auto).
+The number of frames to create (by default
+.Nm
+will create frames until they no longer fit on-screen).
+.It Ic frame-width (default: 484)
+The width of each frame.
+.It Ic frame-offset (default: 0)
+The X offset where you want things to be created from.
+.It Ic bind
+Bind the given key to the action specified. (see key bindings below).
+.Pp
+Example: bind frame-next p
+.It Ic color
+Set the color for the specified type (see colors below).
+.Pp
+Example: color client-active "#55007a"
+.It Ic prefix (default: C-t)
+Configure the prefix key. The format of this key is in the form of MOD-KEY.
+.Pp
+Allowed MODs: C (Control), S (Shift), M (mod1), M2 (mod2), M3 (mod3), M4 (mod4).
+.Sh KEY BINDINGS
+All key bindings start with the prefix key which by default is
+.Ic C\-t .
+The prefix key can be configured in the
+.An configuration file .
+.Pp
+These are the default key bindings for all actions:
+.Bl -tag -width Ds
+.It Ic C\-t c (coma-terminal)
+Start a new xterm in the current frame
+.It Ic C\-t h (frame-prev)
+Go to the next frame
+.It Ic C\-t l (frame-next)
+Go to the previous frame
+.It Ic C\-t space (frame-popup)
+Open and close the popup frame
+.It Ic C\-t z (frame-zoom)
+Zoom/unzoom the current frame
+.It Ic C\-t s (frame-split)
+Split the current frame vertically (can be done only once)
+.It Ic C\-t m (frame-merge)
+Merge a vertically split frame back together into one
+.It Ic C\-t f (frame-split-next)
+Toggle between the upper and lower part of a vertical split
+.It Ic C\-t i (frame-move-client-left)
+Swap the active client with the client on the left
+.It Ic C\-t o (frame-move-client-right)
+Swap the active client with the client on the right
+.It Ic C\-t r (coma-restart)
+Restart coma
+.It Ic C\-t k (client-kill)
+Kill the active client (no warning will be presented)
+.It Ic C\-t p (client-prev)
+Swap to the previous client in the frame
+.It Ic C\-t n (client-next)
+Swap to the next client in the frame
+.El
+.Sh COLORS
+The following colors can be configured:
+.Bl -tag -width Ds
+.It Ic client-active
+The border color for the current active client.
+.It Ic client-inactive
+The border color for inactive clients.
+.It Ic frame-bar
+The color for the frame bars.
+.It Ic frame-bar-client-active
+The text color for the active client in the frame bar.
+.It Ic frame-bar-client-inactive
+The text color for the inactive client in the frame bar.
+.Sh AUTHORS
+.Nm
+was written by
+.An Joris Vink <joris@coders.se>
