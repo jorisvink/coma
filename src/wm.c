@@ -116,10 +116,8 @@ coma_wm_run(void)
 {
 	XEvent			evt;
 	struct pollfd		pfd[1];
-	Time			motion;
 	int			running, ret;
 
-	motion = 0;
 	running = 1;
 
 	while (running) {
