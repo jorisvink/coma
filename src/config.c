@@ -118,8 +118,6 @@ config_parse(const char *path)
 			continue;
 		}
 
-		printf("%d (%s)\n", argc, argv[0]);
-
 		for (i = 0; keywords[i].name != NULL; i++) {
 			if (!strcmp(argv[0], keywords[i].name)) {
 				if (argc - 1 != keywords[i].args) {
@@ -235,8 +233,6 @@ config_prefix(int argc, char **argv)
 
 	if (modmasks[i].mask == 0)
 		config_fatal(argv[0], "invalid mod key '%s'", mod);
-
-	printf("mod: %s - key: %s (%lu)\n", mod, key, prefix_key);
 }
 
 static void
