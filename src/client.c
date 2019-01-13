@@ -95,6 +95,7 @@ coma_client_destroy(struct client *client)
 	if (frame->focus != NULL && frame->focus->id == client->id)
 		frame->focus = NULL;
 
+	next = TAILQ_NEXT(client, list);
 	TAILQ_REMOVE(&frame->clients, client, list);
 	free(client);
 
@@ -104,13 +105,17 @@ coma_client_destroy(struct client *client)
 		return;
 
 	if (frame_active == frame_popup) {
-		coma_frame_popup();
-		return;
+		if (TAILQ_EMPTY(&frame_popup->clients)) {
+			coma_frame_popup();
+			return;
+		}
 	}
 
-	if ((next = TAILQ_FIRST(&frame->clients)) == NULL) {
-		if (frame->split != NULL)
-			coma_frame_merge();
+	if (next == NULL) {
+		if ((next = TAILQ_FIRST(&frame->clients)) == NULL) {
+			if (frame->split != NULL)
+				coma_frame_merge();
+		}
 	}
 
 	if (next == NULL) {
