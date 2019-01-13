@@ -69,11 +69,5 @@ prefix-z     = zoom/unzoom current frame to cover all frames
 Screenshots
 -----------
 
-Default frame:
-![Default](https://git.kore.io/coma-default.png?raw=true)
-
-Large frame:
-![Large](https://git.kore.io/coma-large.png?raw=true)
-
-Split:
-![Split](https://git.kore.io/coma-split.png?raw=true)
+![coma](https://git.kore.io/coma.png?raw=true)
+![split](https://git.kore.io/coma-split.png?raw=true)
