@@ -36,6 +36,8 @@ $ env CFLAGS=-D_GNU_SOURCE LDFLAGS=-lbsd make
 
 Key bindings
 ------------
+All key bindings are changable via the config file (see coma.1).
+
 C-t = prefix
 
 prefix-c     = new xterm
