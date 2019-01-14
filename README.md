@@ -21,17 +21,20 @@ Coma should build fine on MacOS, Linux and OpenBSD.
 OpenBSD:
 ```
 $ make
+$ doas make install
 ```
 
 MacOS:
 ```
 $ export PKG_CONFIG_PATH=/opt/X11/share/pkgconfig:/opt/X11/lib/pkgconfig
 $ make
+$ sudo make install
 ```
 
 Linux (required libbsd):
 ```
 $ env CFLAGS=-D_GNU_SOURCE LDFLAGS=-lbsd make
+$ sudo make install
 ```
 
 Key bindings
