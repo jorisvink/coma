@@ -20,7 +20,7 @@ Coma should build fine on MacOS, Linux and OpenBSD.
 
 OpenBSD:
 ```
-$ gmake
+$ make
 ```
 
 MacOS:
