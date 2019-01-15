@@ -158,6 +158,7 @@ void		coma_client_focus(struct client *);
 void		coma_client_unhide(struct client *);
 void		coma_client_adjust(struct client *);
 void		coma_client_destroy(struct client *);
+void		coma_client_warp_pointer(struct client *);
 void		coma_client_send_configure(struct client *);
 
 struct client	*coma_client_find(Window);

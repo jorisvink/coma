@@ -59,6 +59,8 @@ coma_client_create(Window window)
 	coma_frame_bar_update(frame_active);
 
 	XSync(dpy, False);
+
+	coma_client_warp_pointer(client);
 }
 
 void
@@ -160,6 +162,13 @@ coma_client_unhide(struct client *client)
 		client->flags &= ~COMA_CLIENT_HIDDEN;
 		coma_client_map(client);
 	}
+}
+
+void
+coma_client_warp_pointer(struct client *client)
+{
+	XWarpPointer(dpy, None, client->window, 0, 0, 0, 0,
+	    client->w / 2, client->h / 2);
 }
 
 void

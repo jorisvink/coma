@@ -225,6 +225,7 @@ coma_frame_client_next(void)
 
 	if (next != NULL) {
 		coma_client_focus(next);
+		coma_client_warp_pointer(next);
 		coma_frame_bar_update(frame_active);
 	}
 }
@@ -242,6 +243,7 @@ coma_frame_client_prev(void)
 
 	if (prev != NULL) {
 		coma_client_focus(prev);
+		coma_client_warp_pointer(prev);
 		coma_frame_bar_update(frame_active);
 	}
 }
@@ -344,8 +346,10 @@ coma_frame_merge(void)
 	TAILQ_FOREACH(client, &frame_active->clients, list)
 		coma_client_adjust(client);
 
-	if (focus != NULL)
+	if (focus != NULL) {
 		coma_client_focus(focus);
+		coma_client_warp_pointer(focus);
+	}
 
 	frame_bar_create(frame_active);
 	coma_frame_bar_update(frame_active);
@@ -600,8 +604,10 @@ frame_focus(struct frame *frame)
 	if ((client = frame->focus) == NULL)
 		client = TAILQ_FIRST(&frame->clients);
 
-	if (client != NULL)
+	if (client != NULL) {
 		coma_client_focus(client);
+		coma_client_warp_pointer(client);
+	}
 }
 
 static struct frame *
