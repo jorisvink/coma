@@ -15,6 +15,7 @@
  */
 
 #ifndef __H_COMA_H
+#define __H_COMA_H
 
 #include <sys/queue.h>
 
