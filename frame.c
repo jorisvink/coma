@@ -26,15 +26,15 @@
 
 #include "coma.h"
 
-#define CLIENT_MOVE_LEFT		1
-#define CLIENT_MOVE_RIGHT		2
+#define CLIENT_SWAP_LEFT		1
+#define CLIENT_SWAP_RIGHT		2
 
 static void		frame_focus(struct frame *);
 static void		frame_bar_create(struct frame *);
 static struct frame	*frame_create(u_int16_t,
 			    u_int16_t, u_int16_t, u_int16_t);
 
-static void		frame_client_move(int);
+static void		frame_client_swap(int);
 static struct frame	*frame_find_left(void);
 static struct frame	*frame_find_right(void);
 
@@ -249,15 +249,15 @@ coma_frame_client_prev(void)
 }
 
 void
-coma_frame_client_move_left(void)
+coma_frame_client_swap_left(void)
 {
-	frame_client_move(CLIENT_MOVE_LEFT);
+	frame_client_swap(CLIENT_SWAP_LEFT);
 }
 
 void
-coma_frame_client_move_right(void)
+coma_frame_client_swap_right(void)
 {
-	frame_client_move(CLIENT_MOVE_RIGHT);
+	frame_client_swap(CLIENT_SWAP_RIGHT);
 }
 
 void
@@ -704,7 +704,7 @@ frame_find_right(void)
 }
 
 static void
-frame_client_move(int which)
+frame_client_swap(int which)
 {
 	struct frame	*other, *prev;
 	struct client	*c1, *c2, *n1, *n2;
@@ -718,10 +718,10 @@ frame_client_move(int which)
 	prev = frame_active;
 
 	switch (which) {
-	case CLIENT_MOVE_LEFT:
+	case CLIENT_SWAP_LEFT:
 		other = frame_find_left();
 		break;
-	case CLIENT_MOVE_RIGHT:
+	case CLIENT_SWAP_RIGHT:
 		other = frame_find_right();
 		break;
 	default:

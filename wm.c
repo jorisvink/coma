@@ -79,8 +79,8 @@ struct {
 	{ "frame-merge",		XK_m,	coma_frame_merge },
 	{ "frame-split-next",		XK_f,	coma_frame_split_next },
 
-	{ "frame-move-client-left",	XK_i,	coma_frame_client_move_left },
-	{ "frame-move-client-right", 	XK_o,	coma_frame_client_move_right },
+	{ "frame-swap-client-left",	XK_i,	coma_frame_client_swap_left },
+	{ "frame-swap-client-right", 	XK_o,	coma_frame_client_swap_right },
 
 	{ "coma-restart",		XK_r,	wm_restart },
 	{ "coma-terminal",		XK_c,	coma_spawn_terminal },
