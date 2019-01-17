@@ -29,7 +29,7 @@
 
 #define errno_s				strerror(errno)
 
-#define COMA_VERSION			"0.1"
+#define COMA_VERSION			"1.0"
 #define COMA_WM_FONT			"fixed:pixelsize=13"
 
 #define COMA_MOD_KEY			ControlMask
