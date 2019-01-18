@@ -74,5 +74,5 @@ prefix-z     = zoom/unzoom current frame to cover all frames
 Screenshots
 -----------
 
-![coma](https://git.kore.io/coma.png?raw=true)
-![split](https://git.kore.io/coma-split.png?raw=true)
+![coma](https://coma.one/wm/screenshots/coma.png?raw=true)
+![split](https://coma.one/wm/screenshots/coma-split.png?raw=true)
