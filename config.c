@@ -35,6 +35,7 @@ static void	config_frame_gap(int, char **);
 static void	config_frame_bar(int, char **);
 static void	config_frame_count(int, char **);
 static void	config_frame_width(int, char **);
+static void	config_frame_height(int, char **);
 static void	config_frame_offset(int, char **);
 
 static void		config_parse(const char *);
@@ -59,6 +60,7 @@ struct {
 	{ "frame-bar",			1,	config_frame_bar },
 	{ "frame-count",		1,	config_frame_count },
 	{ "frame-width",		1,	config_frame_width },
+	{ "frame-height",		1,	config_frame_height },
 	{ "frame-offset",		1,	config_frame_offset },
 
 	{ NULL, 0, NULL }
@@ -257,6 +259,12 @@ static void
 config_frame_width(int argc, char **argv)
 {
 	frame_width = config_strtonum(argv[0], argv[1], 10, 1, USHRT_MAX);
+}
+
+static void
+config_frame_height(int argc, char **argv)
+{
+	frame_height = config_strtonum(argv[0], argv[1], 10, 1, USHRT_MAX);
 }
 
 static void

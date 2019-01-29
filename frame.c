@@ -54,13 +54,19 @@ void
 coma_frame_setup(void)
 {
 	struct frame	*frame;
-	u_int16_t	i, count, width, offset, x;
+	u_int16_t	i, count, width, gap, offset, x;
 
 	TAILQ_INIT(&frames);
 
 	count = 0;
 	width = screen_width - frame_offset;
-	frame_height = screen_height - (frame_gap * 2) - frame_bar;
+
+	if (frame_height == 0) {
+		gap = frame_gap;
+		frame_height = screen_height - (frame_gap * 2) - frame_bar;
+	} else {
+		gap = (screen_height - frame_height) / 2;
+	}
 
 	while (width > frame_width) {
 		if (frame_count != -1 && count == frame_count)
@@ -83,7 +89,7 @@ coma_frame_setup(void)
 
 	for (i = 0; i < count; i++) {
 		frame = frame_create(frame_width,
-		    frame_height, offset, frame_gap);
+		    frame_height, offset, gap);
 		frame->flags = COMA_FRAME_INLIST;
 		TAILQ_INSERT_TAIL(&frames, frame, list);
 		offset += frame_width + frame_gap;
@@ -108,7 +114,7 @@ coma_frame_setup(void)
 		width = screen_width - (frame_gap * 2);
 	}
 
-	frame_popup = frame_create(width, frame_height, offset, frame_gap);
+	frame_popup = frame_create(width, frame_height, offset, gap);
 
 	frame_offset = x;
 	zoom_width -= frame_gap;

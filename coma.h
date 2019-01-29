@@ -105,6 +105,7 @@ extern int			frame_count;
 extern u_int16_t		frame_gap;
 extern u_int16_t		frame_bar;
 extern u_int16_t		frame_width;
+extern u_int16_t		frame_height;
 extern u_int16_t		frame_offset;
 extern u_int16_t		screen_width;
 extern u_int16_t		screen_height;
