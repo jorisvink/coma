@@ -44,6 +44,7 @@ static u_int16_t		zoom_width = 0;
 int				frame_count = -1;
 u_int16_t			frame_offset = 0;
 u_int16_t			frame_height = 0;
+u_int16_t			frame_y_offset = 0;
 struct frame			*frame_popup = NULL;
 struct frame			*frame_active = NULL;
 u_int16_t			frame_gap = COMA_FRAME_GAP;
@@ -54,7 +55,7 @@ void
 coma_frame_setup(void)
 {
 	struct frame	*frame;
-	u_int16_t	i, count, width, gap, offset, x;
+	u_int16_t	i, count, width, offset, x;
 
 	TAILQ_INIT(&frames);
 
@@ -62,10 +63,10 @@ coma_frame_setup(void)
 	width = screen_width - frame_offset;
 
 	if (frame_height == 0) {
-		gap = frame_gap;
+		frame_y_offset = frame_gap;
 		frame_height = screen_height - (frame_gap * 2) - frame_bar;
 	} else {
-		gap = (screen_height - frame_height) / 2;
+		frame_y_offset = (screen_height - frame_height) / 2;
 	}
 
 	while (width > frame_width) {
@@ -89,7 +90,7 @@ coma_frame_setup(void)
 
 	for (i = 0; i < count; i++) {
 		frame = frame_create(frame_width,
-		    frame_height, offset, gap);
+		    frame_height, offset, frame_y_offset);
 		frame->flags = COMA_FRAME_INLIST;
 		TAILQ_INSERT_TAIL(&frames, frame, list);
 		offset += frame_width + frame_gap;
@@ -114,7 +115,7 @@ coma_frame_setup(void)
 		width = screen_width - (frame_gap * 2);
 	}
 
-	frame_popup = frame_create(width, frame_height, offset, gap);
+	frame_popup = frame_create(width, frame_height, offset, frame_y_offset);
 
 	frame_offset = x;
 	zoom_width -= frame_gap;
@@ -280,7 +281,7 @@ coma_frame_split(void)
 		return;
 
 	height = frame_active->h / 2 - frame_gap;
-	y = (frame_active->h / 2) + frame_bar;
+	y = frame_y_offset + (frame_active->h / 2) + frame_gap;
 
 	frame = frame_create(frame_active->w, height, frame_active->x, y);
 
@@ -344,7 +345,7 @@ coma_frame_merge(void)
 	free(dies);
 
 	survives->split = NULL;
-	survives->h = screen_height - (frame_gap * 2) - frame_bar;
+	survives->h = frame_height;
 	survives->orig_h = survives->h;
 
 	frame_active = survives;
@@ -473,7 +474,7 @@ coma_frame_zoom(void)
 		frame_active->w = zoom_width;
 		frame_active->h = frame_height;
 		frame_active->x = frame_offset;
-		frame_active->y = frame_gap;
+		frame_active->y = frame_y_offset;
 		frame_active->flags |= COMA_FRAME_ZOOMED;
 	}
 
