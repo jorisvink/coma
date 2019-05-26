@@ -50,6 +50,7 @@ struct frame			*frame_active = NULL;
 u_int16_t			frame_gap = COMA_FRAME_GAP;
 u_int16_t			frame_bar = COMA_FRAME_BAR;
 u_int16_t			frame_width = COMA_FRAME_WIDTH;
+u_int16_t			frame_border = COMA_FRAME_BORDER;
 
 void
 coma_frame_setup(void)
@@ -64,7 +65,8 @@ coma_frame_setup(void)
 
 	if (frame_height == 0) {
 		frame_y_offset = frame_gap;
-		frame_height = screen_height - (frame_gap * 2) - frame_bar;
+		frame_height = screen_height - (frame_gap * 2) - frame_bar -
+		    (frame_border * 2);
 	} else {
 		frame_y_offset = (screen_height - frame_height) / 2;
 	}
@@ -93,8 +95,8 @@ coma_frame_setup(void)
 		    frame_height, offset, frame_y_offset);
 		frame->flags = COMA_FRAME_INLIST;
 		TAILQ_INSERT_TAIL(&frames, frame, list);
-		offset += frame_width + frame_gap;
-		zoom_width += frame_width + frame_gap;
+		offset += frame_width + frame_gap + frame_border;
+		zoom_width += frame_width + frame_gap + frame_border;
 	}
 
 	if (frame_offset != 0) {
@@ -112,13 +114,13 @@ coma_frame_setup(void)
 		}
 	} else {
 		offset = frame_gap;
-		width = screen_width - (frame_gap * 2);
+		width = screen_width - (frame_gap * 2) - (frame_border * 2);
 	}
 
 	frame_popup = frame_create(width, frame_height, offset, frame_y_offset);
 
 	frame_offset = x;
-	zoom_width -= frame_gap;
+	zoom_width -= frame_gap + frame_border;
 
 	frame_active = TAILQ_FIRST(&frames);
 }
@@ -656,11 +658,11 @@ frame_bar_create(struct frame *frame)
 		XftDrawDestroy(frame->xft_draw);
 	}
 
-	y_offset = frame->y + frame->h;
+	y_offset = frame->y + frame->h + (frame_border * 2);
 	color = coma_wm_color("frame-bar");
 
 	frame->bar = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy),
-	    frame->x, y_offset, frame->w + 2,
+	    frame->x, y_offset, frame->w + frame_border * 2,
 	    frame_bar, 0, WhitePixel(dpy, frame->screen), color->pixel);
 
 	XSelectInput(dpy, frame->bar, ButtonReleaseMask);

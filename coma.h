@@ -35,7 +35,8 @@
 #define COMA_MOD_KEY			ControlMask
 #define COMA_PREFIX_KEY			XK_t
 
-#define COMA_FRAME_GAP		10
+#define COMA_FRAME_BORDER	5
+#define COMA_FRAME_GAP		20
 #define COMA_FRAME_BAR		20
 #define COMA_FRAME_WIDTH	484
 
@@ -107,6 +108,7 @@ extern u_int16_t		frame_bar;
 extern u_int16_t		frame_width;
 extern u_int16_t		frame_height;
 extern u_int16_t		frame_offset;
+extern u_int16_t		frame_border;
 extern u_int16_t		screen_width;
 extern u_int16_t		screen_height;
 extern struct frame		*frame_popup;

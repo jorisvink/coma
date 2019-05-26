@@ -38,13 +38,13 @@ coma_client_create(Window window)
 	if (client_active == NULL)
 		client_active = client;
 
-	client->bw = 1;
 	client->x = attr.x;
 	client->y = attr.y;
 	client->w = attr.width;
 	client->h = attr.height;
 	client->window = window;
 	client->id = client_id++;
+	client->bw = frame_border;
 	client->frame = frame_active;
 
 	XSelectInput(dpy, client->window,
