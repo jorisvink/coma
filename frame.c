@@ -95,8 +95,8 @@ coma_frame_setup(void)
 		    frame_height, offset, frame_y_offset);
 		frame->flags = COMA_FRAME_INLIST;
 		TAILQ_INSERT_TAIL(&frames, frame, list);
-		offset += frame_width + frame_gap + frame_border;
-		zoom_width += frame_width + frame_gap + frame_border;
+		offset += frame_width + frame_gap + (frame_border * 2);
+		zoom_width += frame_width + frame_gap + (frame_border * 2);
 	}
 
 	if (frame_offset != 0) {
@@ -120,7 +120,7 @@ coma_frame_setup(void)
 	frame_popup = frame_create(width, frame_height, offset, frame_y_offset);
 
 	frame_offset = x;
-	zoom_width -= frame_gap + frame_border;
+	zoom_width -= frame_gap + (frame_border * 2);
 
 	frame_active = TAILQ_FIRST(&frames);
 }
@@ -274,7 +274,7 @@ coma_frame_split(void)
 {
 	struct frame	*frame;
 	struct client	*client;
-	u_int16_t	height, y;
+	u_int16_t	height, used, y;
 
 	if (frame_active == frame_popup)
 		return;
@@ -282,8 +282,12 @@ coma_frame_split(void)
 	if (frame_active->split != NULL)
 		return;
 
-	height = frame_active->h / 2 - frame_gap;
-	y = frame_y_offset + (frame_active->h / 2) + frame_gap;
+	height = frame_border + frame_active->h + frame_border + frame_bar;
+	used = (frame_border * 4) + (frame_bar * 2) + frame_gap;
+	height = (height - used) / 2;
+
+	y = frame_active->y + frame_border + height + frame_border +
+	    frame_bar + frame_gap;
 
 	frame = frame_create(frame_active->w, height, frame_active->x, y);
 
@@ -294,7 +298,7 @@ coma_frame_split(void)
 	frame->flags = frame_active->flags;
 
 	frame_active->split = frame;
-	frame_active->h = height - frame_gap;
+	frame_active->h = height;
 
 	frame_active->orig_h = frame_active->h;
 
