@@ -26,15 +26,15 @@
 
 #include "coma.h"
 
-#define CLIENT_SWAP_LEFT		1
-#define CLIENT_SWAP_RIGHT		2
+#define CLIENT_MOVE_LEFT		1
+#define CLIENT_MOVE_RIGHT		2
 
 static void		frame_focus(struct frame *);
 static void		frame_bar_create(struct frame *);
 static struct frame	*frame_create(u_int16_t,
 			    u_int16_t, u_int16_t, u_int16_t);
 
-static void		frame_client_swap(int);
+static void		frame_client_move(int);
 static struct frame	*frame_find_left(void);
 static struct frame	*frame_find_right(void);
 
@@ -258,15 +258,15 @@ coma_frame_client_prev(void)
 }
 
 void
-coma_frame_client_swap_left(void)
+coma_frame_client_move_left(void)
 {
-	frame_client_swap(CLIENT_SWAP_LEFT);
+	frame_client_move(CLIENT_MOVE_LEFT);
 }
 
 void
-coma_frame_client_swap_right(void)
+coma_frame_client_move_right(void)
 {
-	frame_client_swap(CLIENT_SWAP_RIGHT);
+	frame_client_move(CLIENT_MOVE_RIGHT);
 }
 
 void
@@ -717,7 +717,7 @@ frame_find_right(void)
 }
 
 static void
-frame_client_swap(int which)
+frame_client_move(int which)
 {
 	struct frame	*other, *prev;
 	struct client	*c1, *c2, *n1, *n2;
@@ -731,10 +731,10 @@ frame_client_swap(int which)
 	prev = frame_active;
 
 	switch (which) {
-	case CLIENT_SWAP_LEFT:
+	case CLIENT_MOVE_LEFT:
 		other = frame_find_left();
 		break;
-	case CLIENT_SWAP_RIGHT:
+	case CLIENT_MOVE_RIGHT:
 		other = frame_find_right();
 		break;
 	default:
@@ -761,9 +761,6 @@ frame_client_swap(int which)
 	frame_active->focus = NULL;
 	TAILQ_REMOVE(&frame_active->clients, c1, list);
 
-	if (c2 != NULL)
-		TAILQ_REMOVE(&other->clients, c2, list);
-
 	c1->frame = other;
 	c1->x = other->x;
 	if (n2 != NULL)
@@ -771,26 +768,11 @@ frame_client_swap(int which)
 	else
 		TAILQ_INSERT_HEAD(&other->clients, c1, list);
 
-	if (c2 != NULL) {
-		c2->frame = frame_active;
-		c2->x = frame_active->x;
-
-		if (n1 != NULL)
-			TAILQ_INSERT_BEFORE(n1, c2, list);
-		else
-			TAILQ_INSERT_HEAD(&frame_active->clients, c2, list);
-	}
-
 	coma_client_adjust(c1);
-
-	if (c2 != NULL) {
-		c2->frame->focus = c2;
-		coma_client_adjust(c2);
-		XRaiseWindow(dpy, c2->window);
-	}
 
 	frame_active = other;
 	coma_client_focus(c1);
+	coma_client_warp_pointer(c1);
 
 	coma_frame_bar_update(prev);
 	coma_frame_bar_update(frame_active);

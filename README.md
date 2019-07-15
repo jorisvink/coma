@@ -59,9 +59,9 @@ prefix-l     = move to frame to the right of current frame
 
 prefix-k     = kill client in current frame
 
-prefix-i     = swap the active client with the client on the left
+prefix-i     = move the active client to the left
 
-prefix-o     = swap the active client with the client on the right
+prefix-o     = move the active client to the right
 
 prefix-s     = split frame
 
