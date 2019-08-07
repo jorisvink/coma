@@ -29,6 +29,8 @@
 static void	wm_restart(void);
 static void	wm_teardown(void);
 static void	wm_screen_init(void);
+static void	wm_shell_command(void);
+static int	wm_input(char *, size_t);
 
 static void	wm_handle_prefix(XKeyEvent *);
 static void	wm_mouse_click(XButtonEvent *);
@@ -50,6 +52,8 @@ unsigned int	prefix_mod = COMA_MOD_KEY;
 KeySym		prefix_key = COMA_PREFIX_KEY;
 
 static Window	key_input = None;
+static Window	cmd_input = None;
+static XftDraw	*cmd_xft = NULL;
 
 struct {
 	const char	*name;
@@ -62,6 +66,9 @@ struct {
 	{ "frame-bar",			"#55007a",	0,	{ 0 }},
 	{ "frame-bar-client-active",	"#ffffff",	0,	{ 0 }},
 	{ "frame-bar-client-inactive",	"#555555",	0,	{ 0 }},
+	{ "command-input",		"#000000",	0,	{ 0 }},
+	{ "command-bar",		"#ffffe2",	0,	{ 0 }},
+	{ "command-border",		"#75efeb",	0,	{ 0 }},
 	{ NULL,				NULL,		0,	{ 0 }},
 };
 
@@ -88,6 +95,8 @@ struct {
 	{ "client-kill",		XK_k,	coma_client_kill_active },
 	{ "client-prev",		XK_p,	coma_frame_client_prev },
 	{ "client-next",		XK_n,	coma_frame_client_next },
+
+	{ "shell-command",		XK_e,		wm_shell_command },
 
 	{ NULL, 0, NULL }
 };
@@ -262,7 +271,9 @@ wm_teardown(void)
 	coma_frame_cleanup();
 
 	XftFontClose(dpy, font);
+	XftDrawDestroy(cmd_xft);
 	XDestroyWindow(dpy, key_input);
+	XDestroyWindow(dpy, cmd_input);
 
 	XUngrabKeyboard(dpy, CurrentTime);
 	XSync(dpy, False);
@@ -276,6 +287,7 @@ wm_screen_init(void)
 	int		screen;
 	Visual		*visual;
 	Colormap	colormap;
+	XftColor	*bg, *border;
 	unsigned int	windows, idx;
 	Window		root, wr, wp, *childwin;
 
@@ -317,7 +329,108 @@ wm_screen_init(void)
 	XSelectInput(dpy, key_input, KeyPressMask);
 	XMapWindow(dpy, key_input);
 
+	bg = coma_wm_color("command-bar");
+	border = coma_wm_color("command-border");
+
+	cmd_input = XCreateSimpleWindow(dpy, root,
+	    (screen_width / 2) - 200, (screen_height / 2) - 50, 400,
+	    COMA_FRAME_BAR, 2, border->pixel, bg->pixel);
+
+	if ((cmd_xft = XftDrawCreate(dpy, cmd_input, visual, colormap)) == NULL)
+		fatal("XftDrawCreate failed");
+
 	XSync(dpy, False);
+}
+
+static void
+wm_shell_command(void)
+{
+	char	cmd[2048], *argv[COMA_SHELL_ARGV];
+
+	if (wm_input(cmd, sizeof(cmd)) == -1)
+		return;
+
+	argv[0] = "xterm";
+	argv[1] = "-hold";
+	argv[2] = "-e";
+
+	if (coma_split_arguments(cmd, argv + 3, COMA_SHELL_ARGV - 3)) {
+		if (!strcmp(argv[3], "vi") || !strcmp(argv[3], "vim"))
+			argv[1] = "+hold";
+		coma_execute(argv);
+	}
+}
+
+static int
+wm_input(char *cmd, size_t len)
+{
+	XEvent			evt;
+	KeySym			sym;
+	char			c[2];
+	size_t			clen;
+	Window			focus;
+	XftColor		*color;
+	int			revert;
+	struct client		*client;
+
+	memset(cmd, 0, len);
+
+	XSelectInput(dpy, cmd_input, KeyPressMask);
+	XMapWindow(dpy, cmd_input);
+	XRaiseWindow(dpy, cmd_input);
+
+	client = client_active;
+	XGetInputFocus(dpy, &focus, &revert);
+	XSetInputFocus(dpy, cmd_input, RevertToNone, CurrentTime);
+
+	color = coma_wm_color("command-input");
+
+	for (;;) {
+		clen = strlen(cmd);
+
+		XClearWindow(dpy, cmd_input);
+
+		if (clen > 0) {
+			XftDrawStringUtf8(cmd_xft, color, font,
+			    5, 15, (const FcChar8 *)cmd, clen);
+		}
+
+		XMaskEvent(dpy, KeyPressMask, &evt);
+		sym = XkbKeycodeToKeysym(dpy, evt.xkey.keycode, 0,
+		    (evt.xkey.state & ShiftMask));
+
+		if (sym == XK_Shift_L || sym == XK_Shift_R)
+			continue;
+
+		if (sym == XK_BackSpace) {
+			if (clen > 0)
+				cmd[clen - 1] = '\0';
+			continue;
+		}
+
+		if (sym == XK_Tab) {
+			continue;
+		}
+
+		if (sym == XK_Escape || sym == XK_Return)
+			break;
+
+		c[0] = sym;
+		c[1] = '\0';
+
+		if (strlcat(cmd, c, len) >= len)
+			continue;
+	}
+
+	XUnmapWindow(dpy, cmd_input);
+
+	if (client == client_active)
+		XSetInputFocus(dpy, focus, RevertToPointerRoot, CurrentTime);
+
+	if (clen > 1 && sym == XK_Return)
+		return (0);
+
+	return (-1);
 }
 
 static void
@@ -352,14 +465,21 @@ wm_handle_prefix(XKeyEvent *prefix)
 		return;
 
 	XSetInputFocus(dpy, key_input, RevertToNone, CurrentTime);
-	XMaskEvent(dpy, KeyPressMask, &evt);
 
-	if (evt.type != KeyPress) {
-		XSetInputFocus(dpy, focus, RevertToPointerRoot, CurrentTime);
-		return;
+	for (;;) {
+		XMaskEvent(dpy, KeyPressMask, &evt);
+
+		if (evt.type != KeyPress)
+			goto out;
+
+		sym = XkbKeycodeToKeysym(dpy, evt.xkey.keycode, 0,
+		    (evt.xkey.state & ShiftMask));
+
+		if (sym == XK_Shift_L || sym == XK_Shift_R)
+			continue;
+
+		break;
 	}
-
-	sym = XkbKeycodeToKeysym(dpy, evt.xkey.keycode, 0, 0);
 
 	for (i = 0; actions[i].name != NULL; i++) {
 		if (actions[i].sym == sym) {
@@ -368,6 +488,7 @@ wm_handle_prefix(XKeyEvent *prefix)
 		}
 	}
 
+out:
 	if (client == client_active)
 		XSetInputFocus(dpy, focus, RevertToPointerRoot, CurrentTime);
 }

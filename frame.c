@@ -554,7 +554,11 @@ coma_frame_bar_update(struct frame *frame)
 	}
 
 	TAILQ_FOREACH_REVERSE(client, &frame->clients, client_list, list) {
-		len = snprintf(buf, sizeof(buf), "[%u]", idx);
+		if (client->tag)
+			len = snprintf(buf, sizeof(buf), "[%s]", client->tag);
+		else
+			len = snprintf(buf, sizeof(buf), "[%u]", idx);
+
 		if (len == -1 || (size_t)len >= sizeof(buf))
 			(void)strlcpy(buf, "[?]", sizeof(buf));
 		idx++;

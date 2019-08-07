@@ -40,6 +40,8 @@
 #define COMA_FRAME_BAR		20
 #define COMA_FRAME_WIDTH	484
 
+#define COMA_SHELL_ARGV		64
+
 struct frame;
 
 #define COMA_CLIENT_HIDDEN	0x0001
@@ -50,6 +52,7 @@ struct client {
 
 	Window			window;
 	struct frame		*frame;
+	char			*tag;
 
 	u_int16_t		w;
 	u_int16_t		h;
@@ -119,8 +122,11 @@ extern volatile sig_atomic_t	sig_recv;
 void		fatal(const char *, ...);
 
 void		coma_reap(void);
+void		coma_command(char *);
+void		coma_execute(char **);
 void		coma_spawn_terminal(void);
 void		coma_config_parse(const char *);
+int		coma_split_arguments(char *, char **, size_t);
 
 void		*coma_malloc(size_t);
 void		*coma_calloc(size_t, size_t);

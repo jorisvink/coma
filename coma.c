@@ -17,11 +17,13 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include <ctype.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <pwd.h>
 #include <unistd.h>
 
 #include "coma.h"
@@ -48,6 +50,7 @@ main(int argc, char *argv[])
 {
 	struct sigaction	sa;
 	int			ch;
+	struct passwd		*pw;
 	const char		*config;
 	char			**cargv;
 
@@ -86,6 +89,11 @@ main(int argc, char *argv[])
 	if (sigaction(SIGCHLD, &sa, NULL) == -1)
 		fatal("sigaction: %s", errno_s);
 
+	if ((pw = getpwuid(getuid())) != NULL) {
+		if (chdir(pw->pw_dir) == -1)
+			fatal("chdir(%s): %s", pw->pw_dir, errno_s);
+	}
+
 	coma_wm_setup();
 	coma_wm_run();
 
@@ -121,8 +129,18 @@ coma_reap(void)
 void
 coma_spawn_terminal(void)
 {
+	char	*argv[2];
+
+	argv[0] = "xterm";
+	argv[1] = NULL;
+
+	coma_execute(argv);
+}
+
+void
+coma_execute(char **argv)
+{
 	pid_t		pid;
-	char		*args[2];
 
 	pid = fork();
 
@@ -132,9 +150,7 @@ coma_spawn_terminal(void)
 		return;
 	case 0:
 		(void)setsid();
-		args[0] = "xterm";
-		args[1] = NULL;
-		execvp(args[0], args);
+		execvp(argv[0], argv);
 		fprintf(stderr, "failed to start terminal: %s\n", errno_s);
 		exit(1);
 		break;
@@ -166,6 +182,62 @@ coma_calloc(size_t memb, size_t len)
 		fatal("calloc: %s", errno_s);
 
 	return (ptr);
+}
+
+int
+coma_split_arguments(char *args, char **argv, size_t elm)
+{
+	size_t		idx;
+	int		count;
+	char		*p, *line, *end;
+
+	if (elm <= 2)
+		fatal("not enough elements (%zu)", elm);
+
+	idx = 0;
+	count = 0;
+	line = args;
+
+	for (p = line; *p != '\0'; p++) {
+		if (idx >= elm - 1)
+			break;
+
+		if (*p == ' ') {
+			*p = '\0';
+			if (*line != '\0') {
+				argv[idx++] = line;
+				count++;
+			}
+			line = p + 1;
+			continue;
+		}
+
+		if (*p != '"')
+			continue;
+
+		line = p + 1;
+		if ((end = strchr(line, '"')) == NULL)
+			break;
+
+		*end = '\0';
+		argv[idx++] = line;
+		count++;
+		line = end + 1;
+
+		while (isspace(*(unsigned char *)line))
+			line++;
+
+		p = line;
+	}
+
+	if (idx < elm - 2 && *line != '\0') {
+		argv[idx++] = line;
+		count++;
+	}
+
+	argv[idx] = NULL;
+
+	return (count);
 }
 
 void

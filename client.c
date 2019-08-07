@@ -47,6 +47,8 @@ coma_client_create(Window window)
 	client->bw = frame_border;
 	client->frame = frame_active;
 
+	XFetchName(dpy, window, &client->tag);
+
 	XSelectInput(dpy, client->window,
 	    StructureNotifyMask | PropertyChangeMask | FocusChangeMask);
 
@@ -99,6 +101,9 @@ coma_client_destroy(struct client *client)
 
 	next = TAILQ_NEXT(client, list);
 	TAILQ_REMOVE(&frame->clients, client, list);
+	if (client->tag)
+		XFree(client->tag);
+
 	free(client);
 
 	coma_frame_bar_update(frame);
