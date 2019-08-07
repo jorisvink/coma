@@ -45,6 +45,8 @@ C-t = prefix
 
 prefix-c     = new xterm
 
+prefix-e     = open command execution input
+
 prefix-Space = toggle popup area
 
 prefix-p     = previous window
