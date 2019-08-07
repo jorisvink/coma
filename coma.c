@@ -191,7 +191,7 @@ coma_split_arguments(char *args, char **argv, size_t elm)
 	int		count;
 	char		*p, *line, *end;
 
-	if (elm <= 2)
+	if (elm <= 1)
 		fatal("not enough elements (%zu)", elm);
 
 	idx = 0;
@@ -230,7 +230,7 @@ coma_split_arguments(char *args, char **argv, size_t elm)
 		p = line;
 	}
 
-	if (idx < elm - 2 && *line != '\0') {
+	if (idx < elm - 1 && *line != '\0') {
 		argv[idx++] = line;
 		count++;
 	}
