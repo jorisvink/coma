@@ -27,9 +27,10 @@
 #include "coma.h"
 
 static void	wm_restart(void);
+static void	wm_command(void);
 static void	wm_teardown(void);
 static void	wm_screen_init(void);
-static void	wm_shell_command(void);
+static void	wm_command_run(char *);
 static int	wm_input(char *, size_t);
 
 static void	wm_handle_prefix(XKeyEvent *);
@@ -72,6 +73,14 @@ struct {
 	{ NULL,				NULL,		0,	{ 0 }},
 };
 
+struct uaction {
+	KeySym			sym;
+	char			*action;
+	LIST_ENTRY(uaction)	list;
+};
+
+static LIST_HEAD(, uaction)	uactions;
+
 struct {
 	const char	*name;
 	KeySym		sym;
@@ -96,7 +105,7 @@ struct {
 	{ "client-prev",		XK_p,	coma_frame_client_prev },
 	{ "client-next",		XK_n,	coma_frame_client_next },
 
-	{ "shell-command",		XK_e,		wm_shell_command },
+	{ "coma-command",		XK_e,	wm_command },
 
 	{ NULL, 0, NULL }
 };
@@ -106,6 +115,8 @@ coma_wm_init(void)
 {
 	if ((dpy = XOpenDisplay(NULL)) == NULL)
 		fatal("failed to open display");
+
+	LIST_INIT(&uactions);
 }
 
 void
@@ -219,6 +230,17 @@ int
 coma_wm_register_action(const char *action, KeySym sym)
 {
 	int		i;
+	struct uaction	*ua;
+
+	if (!strncmp(COMA_ACTION_PREFIX, action, COMA_ACTION_PREFIX_LEN)) {
+		ua = coma_calloc(1, sizeof(*ua));
+		ua->sym = sym;
+		ua->action = strdup(action + COMA_ACTION_PREFIX_LEN);
+		if (ua->action == NULL)
+			fatal("strdup");
+		LIST_INSERT_HEAD(&uactions, ua, list);
+		return (0);
+	}
 
 	for (i = 0; actions[i].name != NULL; i++) {
 		if (!strcmp(actions[i].name, action)) {
@@ -268,6 +290,14 @@ wm_restart(void)
 static void
 wm_teardown(void)
 {
+	struct uaction	*ua;
+
+	while ((ua = LIST_FIRST(&uactions)) != NULL) {
+		LIST_REMOVE(ua, list);
+		free(ua->action);
+		free(ua);
+	}
+
 	coma_frame_cleanup();
 
 	XftFontClose(dpy, font);
@@ -343,12 +373,20 @@ wm_screen_init(void)
 }
 
 static void
-wm_shell_command(void)
+wm_command(void)
 {
-	char	cmd[2048], *argv[COMA_SHELL_ARGV];
+	char	cmd[2048];
 
 	if (wm_input(cmd, sizeof(cmd)) == -1)
 		return;
+
+	wm_command_run(cmd);
+}
+
+static void
+wm_command_run(char *cmd)
+{
+	char	*argv[COMA_SHELL_ARGV];
 
 	argv[0] = "xterm";
 	argv[1] = "-hold";
@@ -451,6 +489,7 @@ static void
 wm_handle_prefix(XKeyEvent *prefix)
 {
 	XEvent			evt;
+	struct uaction		*ua;
 	KeySym			sym;
 	Window			focus;
 	struct client		*client;
@@ -485,6 +524,15 @@ wm_handle_prefix(XKeyEvent *prefix)
 		if (actions[i].sym == sym) {
 			actions[i].cb();
 			break;
+		}
+	}
+
+	if (actions[i].name == NULL) {
+		LIST_FOREACH(ua, &uactions, list) {
+			if (ua->sym == sym) {
+				wm_command_run(ua->action);
+				break;
+			}
 		}
 	}
 

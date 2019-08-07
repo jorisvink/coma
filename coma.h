@@ -32,6 +32,9 @@
 #define COMA_VERSION			"1.1"
 #define COMA_WM_FONT			"fixed:pixelsize=13"
 
+#define COMA_ACTION_PREFIX		"cmd:"
+#define COMA_ACTION_PREFIX_LEN		(sizeof(COMA_ACTION_PREFIX) - 1)
+
 #define COMA_MOD_KEY			ControlMask
 #define COMA_PREFIX_KEY			XK_t
 

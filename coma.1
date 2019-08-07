@@ -56,6 +56,8 @@ The height of each frame.
 The X offset where you want things to be created from.
 .It Ic bind
 Bind the given key to the action specified. (see key bindings below).
+If the action is prefixed with cmd: the keybinding will execute that command
+via the coma-command internal instead.
 .Pp
 Example: bind frame-next p
 .It Ic color
@@ -102,7 +104,7 @@ Kill the active client (no warning will be presented)
 Swap to the previous client in the frame
 .It Ic C\-t n (client-next)
 Swap to the next client in the frame
-.It Ic C\-t e (shell-command)
+.It Ic C\-t e (coma-command)
 Open the command input.
 .El
 .Sh COLORS
