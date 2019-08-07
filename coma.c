@@ -149,9 +149,11 @@ coma_execute(char **argv)
 		fprintf(stderr, "failed to spawn terminal: %s\n", errno_s);
 		return;
 	case 0:
+		if (chdir(frame_active->pwd) == -1)
+			fprintf(stderr, "chdir: %s\n", errno_s);
 		(void)setsid();
 		execvp(argv[0], argv);
-		fprintf(stderr, "failed to start terminal: %s\n", errno_s);
+		fprintf(stderr, "failed to start '%s': %s\n", argv[0], errno_s);
 		exit(1);
 		break;
 	default:

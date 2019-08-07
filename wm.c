@@ -15,6 +15,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/queue.h>
 
 #include <X11/Xlib.h>
@@ -23,6 +24,7 @@
 #include <poll.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include "coma.h"
 
@@ -32,6 +34,7 @@ static void	wm_teardown(void);
 static void	wm_screen_init(void);
 static void	wm_command_run(char *);
 static int	wm_input(char *, size_t);
+static void	wm_frame_set_directory(void);
 
 static void	wm_handle_prefix(XKeyEvent *);
 static void	wm_mouse_click(XButtonEvent *);
@@ -106,6 +109,7 @@ struct {
 	{ "client-next",		XK_n,	coma_frame_client_next },
 
 	{ "coma-command",		XK_e,	wm_command },
+	{ "frame-set-directory",	XK_d,	wm_frame_set_directory },
 
 	{ NULL, 0, NULL }
 };
@@ -397,6 +401,32 @@ wm_command_run(char *cmd)
 			argv[1] = "+hold";
 		coma_execute(argv);
 	}
+}
+
+static void
+wm_frame_set_directory(void)
+{
+	struct stat	st;
+	char		path[PATH_MAX];
+
+	if (frame_active == NULL)
+		return;
+
+	if (wm_input(path, sizeof(path)) == -1)
+		return;
+
+	if (stat(path, &st) == -1)
+		return;
+
+	if (!S_ISDIR(st.st_mode))
+		return;
+
+	free(frame_active->pwd);
+
+	if ((frame_active->pwd = strdup(path)) == NULL)
+		fatal("strdup");
+
+	coma_frame_bar_update(frame_active);
 }
 
 static int

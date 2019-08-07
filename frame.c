@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #if defined(__linux__)
 #include <bsd/string.h>
@@ -32,7 +33,7 @@
 static void		frame_focus(struct frame *);
 static void		frame_bar_create(struct frame *);
 static struct frame	*frame_create(u_int16_t,
-			    u_int16_t, u_int16_t, u_int16_t);
+			    u_int16_t, u_int16_t, u_int16_t, struct frame *);
 
 static void		frame_client_move(int);
 static struct frame	*frame_find_left(void);
@@ -92,7 +93,7 @@ coma_frame_setup(void)
 
 	for (i = 0; i < count; i++) {
 		frame = frame_create(frame_width,
-		    frame_height, offset, frame_y_offset);
+		    frame_height, offset, frame_y_offset, NULL);
 		frame->flags = COMA_FRAME_INLIST;
 		TAILQ_INSERT_TAIL(&frames, frame, list);
 		offset += frame_width + frame_gap + (frame_border * 2);
@@ -117,7 +118,8 @@ coma_frame_setup(void)
 		width = screen_width - (frame_gap * 2) - (frame_border * 2);
 	}
 
-	frame_popup = frame_create(width, frame_height, offset, frame_y_offset);
+	frame_popup = frame_create(width, frame_height, offset,
+	    frame_y_offset, NULL);
 
 	frame_offset = x;
 	zoom_width -= frame_gap + (frame_border * 2);
@@ -289,7 +291,8 @@ coma_frame_split(void)
 	y = frame_active->y + frame_border + height + frame_border +
 	    frame_bar + frame_gap;
 
-	frame = frame_create(frame_active->w, height, frame_active->x, y);
+	frame = frame_create(frame_active->w, height, frame_active->x, y,
+	    frame_active);
 
 	if (frame_active->flags & COMA_FRAME_INLIST)
 		TAILQ_INSERT_TAIL(&frames, frame, list);
@@ -553,6 +556,11 @@ coma_frame_bar_update(struct frame *frame)
 		offset += gi.width + 4;
 	}
 
+	slen = strlen(frame->pwd);
+	XftTextExtentsUtf8(dpy, font, (const FcChar8 *)frame->pwd, slen, &gi);
+	XftDrawStringUtf8(frame->xft_draw, active, font,
+	    frame->w - gi.width - 5, 15, (const FcChar8 *)frame->pwd, slen);
+
 	TAILQ_FOREACH_REVERSE(client, &frame->clients, client_list, list) {
 		if (client->tag)
 			len = snprintf(buf, sizeof(buf), "[%s]", client->tag);
@@ -628,11 +636,24 @@ frame_focus(struct frame *frame)
 }
 
 static struct frame *
-frame_create(u_int16_t width, u_int16_t height, u_int16_t x, u_int16_t y)
+frame_create(u_int16_t width, u_int16_t height, u_int16_t x, u_int16_t y,
+    struct frame *parent)
 {
 	struct frame		*frame;
+	char			path[PATH_MAX];
 
 	frame = coma_calloc(1, sizeof(*frame));
+
+	if (parent == NULL) {
+		if (getcwd(path, sizeof(path)) == NULL)
+			fatal("getcwd:%s", errno_s);
+		frame->pwd = strdup(path);
+	} else {
+		frame->pwd = strdup(parent->pwd);
+	}
+
+	if (frame->pwd == NULL)
+		fatal("strdup");
 
 	frame->bar = None;
 
