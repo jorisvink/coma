@@ -57,7 +57,7 @@ The X offset where you want things to be created from.
 .It Ic bind
 Bind the given key to the action specified. (see key bindings below).
 If the action is prefixed with cmd: the keybinding will execute that command
-via the coma-command internal instead.
+via the coma-run internal instead.
 .Pp
 Example: bind frame-next p
 .It Ic color
@@ -106,8 +106,10 @@ Kill the active client (no warning will be presented)
 Swap to the previous client in the frame
 .It Ic C\-t n (client-next)
 Swap to the next client in the frame
-.It Ic C\-t e (coma-command)
-Open the command input.
+.It Ic C\-t e (coma-run)
+Opens an input window and runs the given command when RETURN is hit
+.It Ic C\-t colon (coma-command)
+Runs an internal WM command
 .El
 .Sh COLORS
 Colors must be in RGB format prefixed with a pound character and

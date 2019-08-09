@@ -28,11 +28,12 @@
 
 #include "coma.h"
 
-static void	wm_restart(void);
+static void	wm_run(void);
 static void	wm_command(void);
+static void	wm_restart(void);
 static void	wm_teardown(void);
 static void	wm_screen_init(void);
-static void	wm_command_run(char *);
+static void	wm_run_command(char *);
 static int	wm_input(char *, size_t);
 static void	wm_frame_set_directory(void);
 
@@ -97,6 +98,7 @@ struct {
 	{ "frame-split",		XK_s,	coma_frame_split },
 	{ "frame-merge",		XK_m,	coma_frame_merge },
 	{ "frame-split-next",		XK_f,	coma_frame_split_next },
+	{ "frame-set-directory",	XK_d,	wm_frame_set_directory },
 
 	{ "frame-move-client-left",	XK_i,	coma_frame_client_move_left },
 	{ "frame-move-client-right", 	XK_o,	coma_frame_client_move_right },
@@ -108,8 +110,8 @@ struct {
 	{ "client-prev",		XK_p,	coma_frame_client_prev },
 	{ "client-next",		XK_n,	coma_frame_client_next },
 
-	{ "coma-command",		XK_e,	wm_command },
-	{ "frame-set-directory",	XK_d,	wm_frame_set_directory },
+	{ "coma-run",			XK_e,		wm_run },
+	{ "coma-command",		XK_colon,	wm_command },
 
 	{ NULL, 0, NULL }
 };
@@ -377,18 +379,40 @@ wm_screen_init(void)
 }
 
 static void
-wm_command(void)
+wm_run(void)
 {
 	char	cmd[2048];
 
 	if (wm_input(cmd, sizeof(cmd)) == -1)
 		return;
 
-	wm_command_run(cmd);
+	wm_run_command(cmd);
 }
 
 static void
-wm_command_run(char *cmd)
+wm_command(void)
+{
+	char	cmd[32], *argv[32];
+
+	if (wm_input(cmd, sizeof(cmd)) == -1)
+		return;
+
+	if (coma_split_arguments(cmd, argv, 32)) {
+		if (!strcmp(argv[0], "tag") && argv[1] != NULL) {
+			if (client_active == NULL)
+				return;
+
+			free(client_active->tag);
+			if ((client_active->tag = strdup(argv[1])) == NULL)
+				fatal("strdup");
+
+			coma_frame_bar_update(frame_active);
+		}
+	}
+}
+
+static void
+wm_run_command(char *cmd)
 {
 	char	*argv[COMA_SHELL_ARGV];
 
@@ -560,7 +584,7 @@ wm_handle_prefix(XKeyEvent *prefix)
 	if (actions[i].name == NULL) {
 		LIST_FOREACH(ua, &uactions, list) {
 			if (ua->sym == sym) {
-				wm_command_run(ua->action);
+				wm_run_command(ua->action);
 				break;
 			}
 		}
