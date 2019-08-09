@@ -744,8 +744,8 @@ frame_find_right(void)
 static void
 frame_client_move(int which)
 {
+	struct client	*client;
 	struct frame	*other, *prev;
-	struct client	*c1, *c2, *n1, *n2;
 
 	if (!(frame_active->flags & COMA_FRAME_INLIST))
 		return;
@@ -770,34 +770,26 @@ frame_client_move(int which)
 	if (other == NULL)
 		return;
 
-	c1 = frame_active->focus;
+	client = frame_active->focus;
+	frame_active->focus = TAILQ_NEXT(client, list);
 
-	if (other->focus != NULL)
-		c2 = other->focus;
-	else
-		c2 = TAILQ_FIRST(&other->clients);
+	if (frame_active->focus == NULL)
+		frame_active->focus = TAILQ_FIRST(&frame_active->clients);
 
-	n1 = TAILQ_NEXT(c1, list);
-	if (c2 != NULL)
-		n2 = TAILQ_NEXT(c2, list);
-	else
-		n2 = NULL;
+	if (frame_active->focus)
+		coma_client_focus(frame_active->focus);
 
-	frame_active->focus = NULL;
-	TAILQ_REMOVE(&frame_active->clients, c1, list);
+	TAILQ_REMOVE(&frame_active->clients, client, list);
+	TAILQ_INSERT_HEAD(&other->clients, client, list);
 
-	c1->frame = other;
-	c1->x = other->x;
-	if (n2 != NULL)
-		TAILQ_INSERT_BEFORE(n2, c1, list);
-	else
-		TAILQ_INSERT_HEAD(&other->clients, c1, list);
+	client->frame = other;
+	client->x = other->x;
 
-	coma_client_adjust(c1);
+	coma_client_adjust(client);
 
 	frame_active = other;
-	coma_client_focus(c1);
-	coma_client_warp_pointer(c1);
+	coma_client_focus(client);
+	coma_client_warp_pointer(client);
 
 	coma_frame_bar_update(prev);
 	coma_frame_bar_update(frame_active);
