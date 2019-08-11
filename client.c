@@ -47,7 +47,7 @@ coma_client_create(Window window)
 	client->bw = frame_border;
 	client->frame = frame_active;
 
-	XFetchName(dpy, window, &client->tag);
+	coma_client_update_title(client);
 
 	XSelectInput(dpy, client->window,
 	    StructureNotifyMask | PropertyChangeMask | FocusChangeMask);
@@ -101,8 +101,9 @@ coma_client_destroy(struct client *client)
 
 	next = TAILQ_NEXT(client, list);
 	TAILQ_REMOVE(&frame->clients, client, list);
-	if (client->tag)
-		XFree(client->tag);
+
+	if (client->title)
+		free(client->title);
 
 	free(client);
 
@@ -200,6 +201,8 @@ coma_client_focus(struct client *client)
 	client_active = client;
 	frame_active->focus = client;
 
+	coma_frame_bar_update(frame_active);
+
 	XSync(dpy, False);
 }
 
@@ -225,4 +228,23 @@ coma_client_send_configure(struct client *client)
 
 	XSendEvent(dpy, client->window, False,
 	    StructureNotifyMask, (XEvent *)&cfg);
+}
+
+void
+coma_client_update_title(struct client *client)
+{
+	char		*name;
+
+	if (client->flags & COMA_CLIENT_TAG_USER)
+		return;
+
+	if (!XFetchName(dpy, client->window, &name))
+		return;
+
+	free(client->title);
+
+	if ((client->title = strdup(name)) == NULL)
+		fatal("strdup");
+
+	XFree(name);
 }

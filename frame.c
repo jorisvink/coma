@@ -562,8 +562,8 @@ coma_frame_bar_update(struct frame *frame)
 	    frame->w - gi.width - 5, 15, (const FcChar8 *)frame->pwd, slen);
 
 	TAILQ_FOREACH_REVERSE(client, &frame->clients, client_list, list) {
-		if (client->tag)
-			len = snprintf(buf, sizeof(buf), "[%s]", client->tag);
+		if (client->title)
+			len = snprintf(buf, sizeof(buf), "[%s]", client->title);
 		else
 			len = snprintf(buf, sizeof(buf), "[%u]", idx);
 
@@ -616,6 +616,30 @@ coma_frame_bar_click(Window bar, u_int16_t offset)
 		frame->focus = client;
 		frame_focus(frame);
 		coma_frame_bar_update(frame);
+	}
+}
+
+void
+coma_frame_update_titles(void)
+{
+	struct frame	*frame;
+	struct client	*client;
+
+	TAILQ_FOREACH(frame, &frames, list) {
+		TAILQ_FOREACH(client, &frame->clients, list)
+			coma_client_update_title(client);
+		coma_frame_bar_update(frame);
+	}
+
+	TAILQ_FOREACH(client, &frame_popup->clients, list)
+		coma_client_update_title(client);
+
+	coma_frame_bar_update(frame_popup);
+
+	if (frame_popup->split != NULL) {
+		TAILQ_FOREACH(client, &frame_popup->split->clients, list)
+			coma_client_update_title(client);
+		coma_frame_bar_update(frame_popup->split);
 	}
 }
 

@@ -176,6 +176,8 @@ coma_wm_run(void)
 			fatal("poll: %s", errno_s);
 		}
 
+		coma_frame_update_titles();
+
 		if (ret == 0 || !(pfd[0].revents & POLLIN))
 			continue;
 
@@ -402,11 +404,12 @@ wm_command(void)
 			if (client_active == NULL)
 				return;
 
-			free(client_active->tag);
-			if ((client_active->tag = strdup(argv[1])) == NULL)
+			free(client_active->title);
+			if ((client_active->title = strdup(argv[1])) == NULL)
 				fatal("strdup");
 
 			coma_frame_bar_update(frame_active);
+			client_active->flags |= COMA_CLIENT_TAG_USER;
 		}
 	}
 }

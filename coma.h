@@ -48,6 +48,7 @@
 struct frame;
 
 #define COMA_CLIENT_HIDDEN	0x0001
+#define COMA_CLIENT_TAG_USER	0x0002
 
 struct client {
 	u_int32_t		id;
@@ -55,7 +56,7 @@ struct client {
 
 	Window			window;
 	struct frame		*frame;
-	char			*tag;
+	char			*title;
 
 	u_int16_t		w;
 	u_int16_t		h;
@@ -157,6 +158,7 @@ void		coma_frame_client_prev(void);
 void		coma_frame_client_next(void);
 void		coma_frame_bars_create(void);
 void		coma_frame_bars_update(void);
+void		coma_frame_update_titles(void);
 void		coma_frame_client_move_left(void);
 void		coma_frame_client_move_right(void);
 void		coma_frame_bar_update(struct frame *);
@@ -172,6 +174,7 @@ void		coma_client_focus(struct client *);
 void		coma_client_unhide(struct client *);
 void		coma_client_adjust(struct client *);
 void		coma_client_destroy(struct client *);
+void		coma_client_update_title(struct client *);
 void		coma_client_warp_pointer(struct client *);
 void		coma_client_send_configure(struct client *);
 
