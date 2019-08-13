@@ -33,7 +33,12 @@ coma_client_create(Window window)
 	XGetWindowAttributes(dpy, window, &attr);
 
 	client = coma_calloc(1, sizeof(*client));
-	TAILQ_INSERT_HEAD(&frame_active->clients, client, list);
+
+	if (frame_active->focus != NULL) {
+		TAILQ_INSERT_BEFORE(frame_active->focus, client, list);
+	} else {
+		TAILQ_INSERT_HEAD(&frame_active->clients, client, list);
+	}
 
 	if (client_active == NULL)
 		client_active = client;
