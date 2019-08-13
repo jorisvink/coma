@@ -34,8 +34,8 @@ static void	wm_restart(void);
 static void	wm_teardown(void);
 static void	wm_screen_init(void);
 static void	wm_run_command(char *);
-static int	wm_input(char *, size_t);
 static void	wm_frame_set_directory(void);
+static int	wm_input(char *, size_t, void (*autocomplete)(char *, size_t));
 
 static void	wm_handle_prefix(XKeyEvent *);
 static void	wm_mouse_click(XButtonEvent *);
@@ -385,7 +385,7 @@ wm_run(void)
 {
 	char	cmd[2048];
 
-	if (wm_input(cmd, sizeof(cmd)) == -1)
+	if (wm_input(cmd, sizeof(cmd), NULL) == -1)
 		return;
 
 	wm_run_command(cmd);
@@ -396,7 +396,7 @@ wm_command(void)
 {
 	char	cmd[32], *argv[32];
 
-	if (wm_input(cmd, sizeof(cmd)) == -1)
+	if (wm_input(cmd, sizeof(cmd), NULL) == -1)
 		return;
 
 	if (coma_split_arguments(cmd, argv, 32)) {
@@ -410,6 +410,8 @@ wm_command(void)
 
 			coma_frame_bar_update(frame_active);
 			client_active->flags |= COMA_CLIENT_TAG_USER;
+		} else if (!strcmp(argv[0], "untag")) {
+			client_active->flags &= ~COMA_CLIENT_TAG_USER;
 		}
 	}
 }
@@ -439,7 +441,7 @@ wm_frame_set_directory(void)
 	if (frame_active == NULL)
 		return;
 
-	if (wm_input(path, sizeof(path)) == -1)
+	if (wm_input(path, sizeof(path), NULL) == -1)
 		return;
 
 	if (stat(path, &st) == -1)
@@ -457,7 +459,7 @@ wm_frame_set_directory(void)
 }
 
 static int
-wm_input(char *cmd, size_t len)
+wm_input(char *cmd, size_t len, void (*autocomplete)(char *, size_t))
 {
 	XEvent			evt;
 	KeySym			sym;
@@ -504,6 +506,8 @@ wm_input(char *cmd, size_t len)
 		}
 
 		if (sym == XK_Tab) {
+			if (autocomplete != NULL)
+				autocomplete(cmd, len);
 			continue;
 		}
 
