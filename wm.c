@@ -34,7 +34,6 @@ static void	wm_restart(void);
 static void	wm_teardown(void);
 static void	wm_screen_init(void);
 static void	wm_run_command(char *);
-static void	wm_frame_set_directory(void);
 static int	wm_input(char *, size_t, void (*autocomplete)(char *, size_t));
 
 static void	wm_handle_prefix(XKeyEvent *);
@@ -98,7 +97,6 @@ struct {
 	{ "frame-split",		XK_s,	coma_frame_split },
 	{ "frame-merge",		XK_m,	coma_frame_merge },
 	{ "frame-split-next",		XK_f,	coma_frame_split_next },
-	{ "frame-set-directory",	XK_d,	wm_frame_set_directory },
 
 	{ "frame-move-client-left",	XK_i,	coma_frame_client_move_left },
 	{ "frame-move-client-right", 	XK_o,	coma_frame_client_move_right },
@@ -169,7 +167,7 @@ coma_wm_run(void)
 		pfd[0].fd = ConnectionNumber(dpy);
 		pfd[0].events = POLLIN;
 
-		ret = poll(pfd, 1, 1000);
+		ret = poll(pfd, 1, 500);
 		if (ret == -1) {
 			if (errno == EINTR)
 				continue;
@@ -430,32 +428,6 @@ wm_run_command(char *cmd)
 			argv[1] = "+hold";
 		coma_execute(argv);
 	}
-}
-
-static void
-wm_frame_set_directory(void)
-{
-	struct stat	st;
-	char		path[PATH_MAX];
-
-	if (frame_active == NULL)
-		return;
-
-	if (wm_input(path, sizeof(path), NULL) == -1)
-		return;
-
-	if (stat(path, &st) == -1)
-		return;
-
-	if (!S_ISDIR(st.st_mode))
-		return;
-
-	free(frame_active->pwd);
-
-	if ((frame_active->pwd = strdup(path)) == NULL)
-		fatal("strdup");
-
-	coma_frame_bar_update(frame_active);
 }
 
 static int

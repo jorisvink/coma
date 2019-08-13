@@ -47,8 +47,6 @@ prefix-c     = new xterm
 
 prefix-e     = open command execution input
 
-prefix-d     = set the working directory for the frame
-
 prefix-Space = toggle popup area
 
 prefix-colon = coma internal command prompt

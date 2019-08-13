@@ -48,6 +48,7 @@ coma_client_create(Window window)
 	client->frame = frame_active;
 
 	coma_client_update_title(client);
+	coma_frame_bar_update(client->frame);
 
 	XSelectInput(dpy, client->window,
 	    StructureNotifyMask | PropertyChangeMask | FocusChangeMask);
@@ -245,6 +246,11 @@ coma_client_update_title(struct client *client)
 
 	if ((client->title = strdup(name)) == NULL)
 		fatal("strdup");
+
+	if ((client->pwd = strrchr(client->title, ';')) != NULL)
+		*(client->pwd)++ = '\0';
+	else
+		client->pwd = NULL;
 
 	XFree(name);
 }

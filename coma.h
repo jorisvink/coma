@@ -56,6 +56,8 @@ struct client {
 
 	Window			window;
 	struct frame		*frame;
+
+	char			*pwd;
 	char			*title;
 
 	u_int16_t		w;
@@ -98,7 +100,6 @@ struct frame {
 	struct client		*focus;
 	struct client_list	clients;
 	struct frame		*split;
-	char			*pwd;
 
 	TAILQ_ENTRY(frame)	list;
 };

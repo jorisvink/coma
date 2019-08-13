@@ -33,7 +33,7 @@
 static void		frame_focus(struct frame *);
 static void		frame_bar_create(struct frame *);
 static struct frame	*frame_create(u_int16_t,
-			    u_int16_t, u_int16_t, u_int16_t, struct frame *);
+			    u_int16_t, u_int16_t, u_int16_t);
 
 static void		frame_client_move(int);
 static struct frame	*frame_find_left(void);
@@ -93,7 +93,7 @@ coma_frame_setup(void)
 
 	for (i = 0; i < count; i++) {
 		frame = frame_create(frame_width,
-		    frame_height, offset, frame_y_offset, NULL);
+		    frame_height, offset, frame_y_offset);
 		frame->flags = COMA_FRAME_INLIST;
 		TAILQ_INSERT_TAIL(&frames, frame, list);
 		offset += frame_width + frame_gap + (frame_border * 2);
@@ -118,8 +118,7 @@ coma_frame_setup(void)
 		width = screen_width - (frame_gap * 2) - (frame_border * 2);
 	}
 
-	frame_popup = frame_create(width, frame_height, offset,
-	    frame_y_offset, NULL);
+	frame_popup = frame_create(width, frame_height, offset, frame_y_offset);
 
 	frame_offset = x;
 	zoom_width -= frame_gap + (frame_border * 2);
@@ -291,8 +290,7 @@ coma_frame_split(void)
 	y = frame_active->y + frame_border + height + frame_border +
 	    frame_bar + frame_gap;
 
-	frame = frame_create(frame_active->w, height, frame_active->x, y,
-	    frame_active);
+	frame = frame_create(frame_active->w, height, frame_active->x, y);
 
 	if (frame_active->flags & COMA_FRAME_INLIST)
 		TAILQ_INSERT_TAIL(&frames, frame, list);
@@ -528,6 +526,7 @@ coma_frame_bar_update(struct frame *frame)
 {
 	XGlyphInfo		gi;
 	size_t			slen;
+	const char		*pwd;
 	u_int16_t		offset;
 	char			buf[32];
 	struct client		*client;
@@ -556,10 +555,17 @@ coma_frame_bar_update(struct frame *frame)
 		offset += gi.width + 4;
 	}
 
-	slen = strlen(frame->pwd);
-	XftTextExtentsUtf8(dpy, font, (const FcChar8 *)frame->pwd, slen, &gi);
-	XftDrawStringUtf8(frame->xft_draw, active, font,
-	    frame->w - gi.width - 5, 15, (const FcChar8 *)frame->pwd, slen);
+	if (frame->focus != NULL)
+		pwd = frame->focus->pwd;
+	else
+		pwd = NULL;
+
+	if (pwd != NULL) {
+		slen = strlen(pwd);
+		XftTextExtentsUtf8(dpy, font, (const FcChar8 *)pwd, slen, &gi);
+		XftDrawStringUtf8(frame->xft_draw, active, font,
+		    frame->w - gi.width - 5, 15, (const FcChar8 *)pwd, slen);
+	}
 
 	TAILQ_FOREACH_REVERSE(client, &frame->clients, client_list, list) {
 		if (client->title)
@@ -660,24 +666,11 @@ frame_focus(struct frame *frame)
 }
 
 static struct frame *
-frame_create(u_int16_t width, u_int16_t height, u_int16_t x, u_int16_t y,
-    struct frame *parent)
+frame_create(u_int16_t width, u_int16_t height, u_int16_t x, u_int16_t y)
 {
 	struct frame		*frame;
-	char			path[PATH_MAX];
 
 	frame = coma_calloc(1, sizeof(*frame));
-
-	if (parent == NULL) {
-		if (getcwd(path, sizeof(path)) == NULL)
-			fatal("getcwd:%s", errno_s);
-		frame->pwd = strdup(path);
-	} else {
-		frame->pwd = strdup(parent->pwd);
-	}
-
-	if (frame->pwd == NULL)
-		fatal("strdup");
 
 	frame->bar = None;
 

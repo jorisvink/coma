@@ -141,6 +141,7 @@ void
 coma_execute(char **argv)
 {
 	pid_t		pid;
+	const char	*pwd;
 
 	pid = fork();
 
@@ -149,8 +150,14 @@ coma_execute(char **argv)
 		fprintf(stderr, "failed to spawn terminal: %s\n", errno_s);
 		return;
 	case 0:
-		if (chdir(frame_active->pwd) == -1)
+		if (frame_active->focus)
+			pwd = frame_active->focus->pwd;
+		else
+			pwd = NULL;
+
+		if (pwd != NULL && chdir(pwd) == -1)
 			fprintf(stderr, "chdir: %s\n", errno_s);
+
 		(void)setsid();
 		execvp(argv[0], argv);
 		fprintf(stderr, "failed to start '%s': %s\n", argv[0], errno_s);
