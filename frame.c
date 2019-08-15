@@ -526,12 +526,11 @@ coma_frame_bar_update(struct frame *frame)
 {
 	XGlyphInfo		gi;
 	size_t			slen;
-	const char		*pwd;
 	u_int16_t		offset;
-	char			buf[32];
 	struct client		*client;
 	int			len, idx;
-	XftColor		*active, *inactive, *color;
+	char			buf[32], status[256];
+	XftColor		*active, *inactive, *color, *dir;
 
 	/* Can be called before bars are setup. */
 	if (frame->bar == None)
@@ -541,6 +540,7 @@ coma_frame_bar_update(struct frame *frame)
 	offset = 5;
 	buf[0] = '\0';
 
+	dir = coma_wm_color("frame-bar-directory");
 	active = coma_wm_color("frame-bar-client-active");
 	inactive = coma_wm_color("frame-bar-client-inactive");
 
@@ -556,25 +556,43 @@ coma_frame_bar_update(struct frame *frame)
 	}
 
 	if (frame->focus != NULL)
-		pwd = frame->focus->pwd;
+		client = frame->focus;
 	else
-		pwd = NULL;
+		client = NULL;
 
-	if (pwd != NULL) {
-		slen = strlen(pwd);
-		XftTextExtentsUtf8(dpy, font, (const FcChar8 *)pwd, slen, &gi);
-		XftDrawStringUtf8(frame->xft_draw, active, font,
-		    frame->w - gi.width - 5, 15, (const FcChar8 *)pwd, slen);
+	if (client != NULL && client->pwd != NULL) {
+		if (client->host) {
+			len = snprintf(status, sizeof(status), "%s - %s",
+			    client->host, client->pwd);
+		} else {
+			len = snprintf(status, sizeof(status), "%s",
+			    client->pwd);
+		}
+
+		if (len == -1 || (size_t)len >= sizeof(status))
+			(void)strlcpy(buf, "[error]", sizeof(buf));
+
+		slen = strlen(status);
+		XftTextExtentsUtf8(dpy, font,
+		    (const FcChar8 *)status, slen, &gi);
+		XftDrawStringUtf8(frame->xft_draw, dir, font,
+		    5, 15, (const FcChar8 *)status, slen);
 	}
 
 	TAILQ_FOREACH_REVERSE(client, &frame->clients, client_list, list) {
-		if (client->title)
-			len = snprintf(buf, sizeof(buf), "[%s]", client->title);
-		else
+		if (client->tag) {
+			len = snprintf(buf, sizeof(buf), "[%s]", client->tag);
+		} else if (client->cmd) {
+			len = snprintf(buf, sizeof(buf), "[%s]", client->cmd);
+		} else if (client->host) {
+			len = snprintf(buf, sizeof(buf), "[%s]", client->host);
+		} else {
 			len = snprintf(buf, sizeof(buf), "[%u]", idx);
+		}
 
 		if (len == -1 || (size_t)len >= sizeof(buf))
 			(void)strlcpy(buf, "[?]", sizeof(buf));
+
 		idx++;
 
 		if (client == frame->focus)
@@ -586,7 +604,7 @@ coma_frame_bar_update(struct frame *frame)
 		XftTextExtentsUtf8(dpy, font, (const FcChar8 *)buf, slen, &gi);
 
 		XftDrawStringUtf8(frame->xft_draw, color, font,
-		    offset, 15, (const FcChar8 *)buf, slen);
+		    offset, 30, (const FcChar8 *)buf, slen);
 
 		client->fbo = offset;
 		client->fbw = gi.width;

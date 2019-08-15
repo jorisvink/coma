@@ -28,6 +28,7 @@ all: $(COMA)
 
 install: $(COMA)
 	install -m 555 $(COMA) $(INSTALL_DIR)/$(COMA)
+	install -m 555 scripts/coma-* $(INSTALL_DIR)
 	install -m 644 coma.1 $(MAN_DIR)/man1/coma.1
 
 $(COMA): $(OBJS)

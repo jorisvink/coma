@@ -43,8 +43,6 @@ static void		config_parse(const char *);
 static void		config_fatal(const char *, const char *, ...);
 
 static char		*config_read_line(FILE *, char *, size_t);
-static int		config_split_string(char *, const char *,
-			    char **, size_t);
 static long long	config_strtonum(const char *, const char *, int,
 			    long long, long long);
 
@@ -115,7 +113,7 @@ config_parse(const char *path)
 		return;
 
 	while ((line = config_read_line(fp, buf, sizeof(buf))) != NULL) {
-		argc = config_split_string(line, " ", argv, 5);
+		argc = coma_split_string(line, " ", argv, 5);
 
 		if (argc < 2) {
 			config_line++;
@@ -306,28 +304,6 @@ config_read_line(FILE *fp, char *in, size_t len)
 	}
 
 	return (p);
-}
-
-static int
-config_split_string(char *input, const char *delim, char **out, size_t ele)
-{
-	int		count;
-	char		**ap;
-
-	if (ele == 0)
-		return (0);
-
-	count = 0;
-	for (ap = out; ap < &out[ele - 1] &&
-	    (*ap = strsep(&input, delim)) != NULL;) {
-		if (**ap != '\0') {
-			ap++;
-			count++;
-		}
-	}
-
-	*ap = NULL;
-	return (count);
 }
 
 static long long

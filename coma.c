@@ -18,6 +18,7 @@
 #include <sys/wait.h>
 
 #include <ctype.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -30,6 +31,7 @@
 
 static void	coma_signal(int);
 
+char			myhost[256];
 int			restart = 0;
 volatile sig_atomic_t	sig_recv = -1;
 
@@ -93,6 +95,9 @@ main(int argc, char *argv[])
 		if (chdir(pw->pw_dir) == -1)
 			fatal("chdir(%s): %s", pw->pw_dir, errno_s);
 	}
+
+	if (gethostname(myhost, sizeof(myhost)) == -1)
+		fatal("gethostname: %s", errno_s);
 
 	coma_wm_setup();
 	coma_wm_run();
@@ -246,6 +251,28 @@ coma_split_arguments(char *args, char **argv, size_t elm)
 
 	argv[idx] = NULL;
 
+	return (count);
+}
+
+int
+coma_split_string(char *input, const char *delim, char **out, size_t ele)
+{
+	int		count;
+	char		**ap;
+
+	if (ele == 0)
+		return (0);
+
+	count = 0;
+	for (ap = out; ap < &out[ele - 1] &&
+	    (*ap = strsep(&input, delim)) != NULL;) {
+		if (**ap != '\0') {
+			ap++;
+			count++;
+		}
+	}
+
+	*ap = NULL;
 	return (count);
 }
 

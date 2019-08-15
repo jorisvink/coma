@@ -40,7 +40,7 @@
 
 #define COMA_FRAME_BORDER	5
 #define COMA_FRAME_GAP		20
-#define COMA_FRAME_BAR		20
+#define COMA_FRAME_BAR		35
 #define COMA_FRAME_WIDTH	484
 
 #define COMA_SHELL_ARGV		64
@@ -48,7 +48,6 @@
 struct frame;
 
 #define COMA_CLIENT_HIDDEN	0x0001
-#define COMA_CLIENT_TAG_USER	0x0002
 
 struct client {
 	u_int32_t		id;
@@ -57,8 +56,11 @@ struct client {
 	Window			window;
 	struct frame		*frame;
 
+	char			*tag;
+	char			*cmd;
 	char			*pwd;
-	char			*title;
+	char			*host;
+	char			*status;
 
 	u_int16_t		w;
 	u_int16_t		h;
@@ -109,6 +111,7 @@ TAILQ_HEAD(frame_list, frame);
 extern Display			*dpy;
 extern XftFont			*font;
 extern int			restart;
+extern char			myhost[256];
 extern unsigned int		prefix_mod;
 extern KeySym			prefix_key;
 extern int			frame_count;
@@ -133,6 +136,7 @@ void		coma_execute(char **);
 void		coma_spawn_terminal(void);
 void		coma_config_parse(const char *);
 int		coma_split_arguments(char *, char **, size_t);
+int		coma_split_string(char *, const char *, char **, size_t);
 
 void		*coma_malloc(size_t);
 void		*coma_calloc(size_t, size_t);

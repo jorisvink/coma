@@ -108,8 +108,8 @@ coma_client_destroy(struct client *client)
 	next = TAILQ_NEXT(client, list);
 	TAILQ_REMOVE(&frame->clients, client, list);
 
-	if (client->title)
-		free(client->title);
+	if (client->status)
+		free(client->status);
 
 	free(client);
 
@@ -239,23 +239,31 @@ coma_client_send_configure(struct client *client)
 void
 coma_client_update_title(struct client *client)
 {
-	char		*name;
-
-	if (client->flags & COMA_CLIENT_TAG_USER)
-		return;
+	int		n;
+	char		*name, *args[4];
 
 	if (!XFetchName(dpy, client->window, &name))
 		return;
 
-	free(client->title);
+	free(client->status);
 
-	if ((client->title = strdup(name)) == NULL)
+	client->pwd = NULL;
+	client->cmd = NULL;
+	client->host = NULL;
+
+	if ((client->status = strdup(name)) == NULL)
 		fatal("strdup");
 
-	if ((client->pwd = strrchr(client->title, ';')) != NULL)
-		*(client->pwd)++ = '\0';
-	else
-		client->pwd = NULL;
+	if ((n = coma_split_string(client->status, ";", args, 4)) < 2) {
+		client->cmd = args[0];
+		return;
+	}
+
+	client->host = args[0];
+	client->pwd = args[1];
+
+	if (n == 3)
+		client->cmd = args[2];
 
 	XFree(name);
 }

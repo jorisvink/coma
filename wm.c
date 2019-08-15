@@ -68,6 +68,7 @@ struct {
 	{ "client-active",		"#55007a",	0,	{ 0 }},
 	{ "client-inactive",		"#222222",	0,	{ 0 }},
 	{ "frame-bar",			"#55007a",	0,	{ 0 }},
+	{ "frame-bar-directory",	"#444444",	0,	{ 0 }},
 	{ "frame-bar-client-active",	"#ffffff",	0,	{ 0 }},
 	{ "frame-bar-client-inactive",	"#555555",	0,	{ 0 }},
 	{ "command-input",		"#000000",	0,	{ 0 }},
@@ -402,14 +403,14 @@ wm_command(void)
 			if (client_active == NULL)
 				return;
 
-			free(client_active->title);
-			if ((client_active->title = strdup(argv[1])) == NULL)
+			free(client_active->tag);
+			if ((client_active->tag = strdup(argv[1])) == NULL)
 				fatal("strdup");
 
 			coma_frame_bar_update(frame_active);
-			client_active->flags |= COMA_CLIENT_TAG_USER;
 		} else if (!strcmp(argv[0], "untag")) {
-			client_active->flags &= ~COMA_CLIENT_TAG_USER;
+			free(client_active->tag);
+			client_active->tag = NULL;
 		}
 	}
 }
@@ -417,15 +418,46 @@ wm_command(void)
 static void
 wm_run_command(char *cmd)
 {
+	int	off, title, local;
 	char	*argv[COMA_SHELL_ARGV];
 
-	argv[0] = "xterm";
-	argv[1] = "-hold";
-	argv[2] = "-e";
+	off = 0;
+	local = 1;
+	title = -1;
 
-	if (coma_split_arguments(cmd, argv + 3, COMA_SHELL_ARGV - 3)) {
-		if (!strcmp(argv[3], "vi") || !strcmp(argv[3], "vim"))
+	argv[off++] = "xterm";
+	argv[off++] = "-hold";
+
+	if (client_active != NULL) {
+		if (strcmp(myhost, client_active->host)) {
+			argv[off++] = "-T";
+			title = off;
+			argv[off++] = client_active->host;
+		}
+	}
+
+	argv[off++] = "-e";
+
+	if (client_active != NULL) {
+		if (strcmp(myhost, client_active->host)) {
+			argv[off++] = "coma-remote";
+			argv[off++] = client_active->host;
+			if (client_active->pwd)
+				argv[off++] = client_active->pwd;
+			local = 0;
+		}
+	}
+
+	if (local)
+		argv[off++] = "coma-cmd";
+
+	if (coma_split_arguments(cmd, argv + off, COMA_SHELL_ARGV - off)) {
+		if (!strcmp(argv[off], "vi") || !strcmp(argv[off], "vim"))
 			argv[1] = "+hold";
+
+		if (title != -1)
+			argv[title] = argv[off];
+
 		coma_execute(argv);
 	}
 }
