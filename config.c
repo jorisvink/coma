@@ -28,6 +28,7 @@
 #include "coma.h"
 
 static void	config_bind(int, char **);
+static void	config_font(int, char **);
 static void	config_color(int, char **);
 static void	config_prefix(int, char **);
 
@@ -54,6 +55,7 @@ struct {
 	{ "bind",			2,	config_bind },
 	{ "color",			2,	config_color },
 	{ "prefix",			1,	config_prefix },
+	{ "font",			1,	config_font },
 
 	{ "frame-gap",			1,	config_frame_gap },
 	{ "frame-bar",			1,	config_frame_bar },
@@ -165,6 +167,15 @@ config_bind(int argc, char **argv)
 
 	if (coma_wm_register_action(argv[1], sym) == -1)
 		config_fatal(argv[0], "unknown action '%s'", argv[1]);
+}
+
+static void
+config_font(int argc, char **argv)
+{
+	free(font_name);
+
+	if ((font_name = strdup(argv[1])) == NULL)
+		fatal("strdup");
 }
 
 static void

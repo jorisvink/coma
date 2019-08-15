@@ -52,6 +52,7 @@ XftFont		*font = NULL;
 u_int16_t	screen_width = 0;
 u_int16_t	screen_height = 0;
 
+char		*font_name = NULL;
 unsigned int	prefix_mod = COMA_MOD_KEY;
 KeySym		prefix_key = COMA_PREFIX_KEY;
 
@@ -120,6 +121,9 @@ coma_wm_init(void)
 {
 	if ((dpy = XOpenDisplay(NULL)) == NULL)
 		fatal("failed to open display");
+
+	if ((font_name = strdup(COMA_WM_FONT)) == NULL)
+		fatal("strdup");
 
 	LIST_INIT(&uactions);
 }
@@ -336,8 +340,8 @@ wm_screen_init(void)
 	screen_width = DisplayWidth(dpy, screen);
 	screen_height = DisplayHeight(dpy, screen);
 
-	if ((font = XftFontOpenName(dpy, screen, COMA_WM_FONT)) == NULL)
-		fatal("failed to open %s", COMA_WM_FONT);
+	if ((font = XftFontOpenName(dpy, screen, font_name)) == NULL)
+		fatal("failed to open %s", font_name);
 
 	for (idx = 0; xft_colors[idx].name != NULL; idx++) {
 		if (xft_colors[idx].allocated == 0) {
