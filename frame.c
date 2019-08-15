@@ -529,7 +529,7 @@ coma_frame_bar_update(struct frame *frame)
 	u_int16_t		offset;
 	struct client		*client;
 	int			len, idx;
-	char			buf[32], status[256];
+	char			buf[64], status[256];
 	XftColor		*active, *inactive, *color, *dir;
 
 	/* Can be called before bars are setup. */
@@ -551,7 +551,7 @@ coma_frame_bar_update(struct frame *frame)
 		slen = strlen(buf);
 		XftTextExtentsUtf8(dpy, font, (const FcChar8 *)buf, slen, &gi);
 		XftDrawStringUtf8(frame->xft_draw, active, font,
-		    offset, 15, (const FcChar8 *)buf, slen);
+		    offset, 30, (const FcChar8 *)buf, slen);
 		offset += gi.width + 4;
 	}
 
