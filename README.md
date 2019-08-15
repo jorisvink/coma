@@ -37,6 +37,34 @@ $ env CFLAGS=-D_GNU_SOURCE LDFLAGS=-lbsd make
 $ sudo make install
 ```
 
+Shell setup
+-----------
+
+Coma ties in directly with your xterms and running shell. With the help
+of your shell you can update coma on the hostname, pwd and commands
+running in the clients.
+
+Here's a snippet from my .zshrc that can get you started:
+
+```
+precmd() {
+        print -Pn "\e]0;%M;%d;zsh\a"
+}
+
+preexec() {
+        cmd=`echo $1 | cut -f1 -d' '`
+        if [ "$cmd" = "vi" ] || [ "$cmd" = $EDITOR ]; then
+                cmd=`echo $1 | cut -f2 -d' '`
+        fi
+
+        print -Pn "\e]0;%M;%d;$cmd\a"
+}
+```
+
+Coma expects the information from the shell in the following format:
+
+hostname;directory;running command
+
 Key bindings
 ------------
 All key bindings are changable via the config file (see coma.1).
