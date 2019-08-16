@@ -65,6 +65,11 @@ Coma expects the information from the shell in the following format:
 
 hostname;directory;running command
 
+If your environment is configured like the above Coma will be able to
+execute commands on remote hosts transparently via prefix-e as it will
+auto detect what host you are currently on and execute the coma-remote
+script to connect to it before executing the command given.
+
 Key bindings
 ------------
 All key bindings are changable via the config file (see coma.1).
