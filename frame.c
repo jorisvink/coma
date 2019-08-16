@@ -572,11 +572,8 @@ coma_frame_bar_update(struct frame *frame)
 		if (len == -1 || (size_t)len >= sizeof(status))
 			(void)strlcpy(buf, "[error]", sizeof(buf));
 
-		slen = strlen(status);
-		XftTextExtentsUtf8(dpy, font,
-		    (const FcChar8 *)status, slen, &gi);
 		XftDrawStringUtf8(frame->xft_draw, dir, font,
-		    5, 15, (const FcChar8 *)status, slen);
+		    5, 15, (const FcChar8 *)status, len);
 	}
 
 	TAILQ_FOREACH_REVERSE(client, &frame->clients, client_list, list) {
