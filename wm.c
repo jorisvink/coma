@@ -26,6 +26,10 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#if defined(__linux__)
+#include <bsd/string.h>
+#endif
+
 #include "coma.h"
 
 static void	wm_run(void);
