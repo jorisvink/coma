@@ -112,4 +112,4 @@ Screenshots
 -----------
 
 ![coma](https://coma.one/wm/screenshots/coma.png?raw=true)
-![split](https://coma.one/wm/screenshots/coma-split.png?raw=true)
+![coma2](https://coma.one/wm/screenshots/coma-split.png?raw=true)
