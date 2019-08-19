@@ -73,7 +73,7 @@ struct {
 	{ "client-active",		"#55007a",	0,	{ 0 }},
 	{ "client-inactive",		"#222222",	0,	{ 0 }},
 	{ "frame-bar",			"#55007a",	0,	{ 0 }},
-	{ "frame-bar-directory",	"#444444",	0,	{ 0 }},
+	{ "frame-bar-directory",	"#0366d6",	0,	{ 0 }},
 	{ "frame-bar-client-active",	"#ffffff",	0,	{ 0 }},
 	{ "frame-bar-client-inactive",	"#555555",	0,	{ 0 }},
 	{ "command-input",		"#000000",	0,	{ 0 }},
