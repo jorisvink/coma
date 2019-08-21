@@ -436,7 +436,7 @@ wm_run_command(char *cmd)
 	argv[off++] = "xterm";
 	argv[off++] = "-hold";
 
-	if (client_active != NULL) {
+	if (client_active != NULL && client_active->host != NULL) {
 		if (strcmp(myhost, client_active->host)) {
 			argv[off++] = "-T";
 			title = off;
@@ -446,7 +446,7 @@ wm_run_command(char *cmd)
 
 	argv[off++] = "-e";
 
-	if (client_active != NULL) {
+	if (client_active != NULL && client_active->host != NULL) {
 		if (strcmp(myhost, client_active->host)) {
 			argv[off++] = "coma-remote";
 			argv[off++] = client_active->host;
