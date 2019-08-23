@@ -4,7 +4,7 @@ CC?=cc
 COMA=coma
 PREFIX?=/usr/local
 INSTALL_DIR=$(PREFIX)/bin
-MAN_DIR=$(PREFIX)/share/man
+MAN_DIR?=$(PREFIX)/share/man
 
 SRC=	coma.c client.c config.c frame.c wm.c
 OBJS=	$(SRC:%.c=%.o)
