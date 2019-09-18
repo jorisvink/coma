@@ -21,8 +21,15 @@
 
 #include "coma.h"
 
+struct client_list	clients;
 static u_int32_t	client_id = 0;
 struct client		*client_active = NULL;
+
+void
+coma_client_init(void)
+{
+	TAILQ_INIT(&clients);
+}
 
 void
 coma_client_create(Window window)
@@ -33,6 +40,8 @@ coma_client_create(Window window)
 	XGetWindowAttributes(dpy, window, &attr);
 
 	client = coma_calloc(1, sizeof(*client));
+
+	TAILQ_INSERT_TAIL(&clients, client, glist);
 
 	if (frame_active->focus != NULL) {
 		TAILQ_INSERT_BEFORE(frame_active->focus, client, list);
@@ -106,6 +115,7 @@ coma_client_destroy(struct client *client)
 		frame->focus = NULL;
 
 	next = TAILQ_NEXT(client, list);
+	TAILQ_REMOVE(&clients, client, glist);
 	TAILQ_REMOVE(&frame->clients, client, list);
 
 	if (client->status)

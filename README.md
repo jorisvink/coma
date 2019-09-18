@@ -102,6 +102,8 @@ prefix-o     = move the active client to the right
 
 prefix-s     = split frame
 
+prefix-q     = client quick selection list
+
 prefix-m     = merge frame back together
 
 prefix-f     = toggle focus between split frames

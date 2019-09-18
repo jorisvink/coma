@@ -103,6 +103,7 @@ main(int argc, char *argv[])
 	if (gethostname(myhost, sizeof(myhost)) == -1)
 		fatal("gethostname: %s", errno_s);
 
+	coma_client_init();
 	coma_wm_setup();
 	coma_wm_run();
 

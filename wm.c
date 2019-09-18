@@ -37,6 +37,7 @@ static void	wm_command(void);
 static void	wm_restart(void);
 static void	wm_teardown(void);
 static void	wm_screen_init(void);
+static void	wm_client_list(void);
 static void	wm_run_command(char *);
 static int	wm_input(char *, size_t, void (*autocomplete)(char *, size_t));
 
@@ -62,7 +63,10 @@ KeySym		prefix_key = COMA_PREFIX_KEY;
 
 static Window	key_input = None;
 static Window	cmd_input = None;
+static Window	clients_win = None;
+
 static XftDraw	*cmd_xft = NULL;
+static XftDraw	*clients_xft = NULL;
 
 struct {
 	const char	*name;
@@ -116,6 +120,7 @@ struct {
 
 	{ "coma-run",			XK_e,		wm_run },
 	{ "coma-command",		XK_colon,	wm_command },
+	{ "coma-client-list",		XK_q,		wm_client_list },
 
 	{ NULL, 0, NULL }
 };
@@ -317,8 +322,11 @@ wm_teardown(void)
 
 	XftFontClose(dpy, font);
 	XftDrawDestroy(cmd_xft);
+	XftDrawDestroy(clients_xft);
+
 	XDestroyWindow(dpy, key_input);
 	XDestroyWindow(dpy, cmd_input);
+	XDestroyWindow(dpy, clients_win);
 
 	XUngrabKeyboard(dpy, CurrentTime);
 	XSync(dpy, False);
@@ -382,6 +390,14 @@ wm_screen_init(void)
 	    COMA_FRAME_BAR, 2, border->pixel, bg->pixel);
 
 	if ((cmd_xft = XftDrawCreate(dpy, cmd_input, visual, colormap)) == NULL)
+		fatal("XftDrawCreate failed");
+
+	clients_win = XCreateSimpleWindow(dpy, root,
+	    (screen_width / 2) - 220, (screen_height / 2) - 205, 400, 400, 2,
+	    border->pixel, bg->pixel);
+
+	if ((clients_xft = XftDrawCreate(dpy,
+	    clients_win, visual, colormap)) == NULL)
 		fatal("XftDrawCreate failed");
 
 	XSync(dpy, False);
@@ -542,6 +558,106 @@ wm_input(char *cmd, size_t len, void (*autocomplete)(char *, size_t))
 		return (0);
 
 	return (-1);
+}
+
+static void
+wm_client_list(void)
+{
+	XEvent			evt;
+	KeySym			sym;
+	Window			focus;
+	XftColor		*color;
+	char			c, buf[128];
+	struct client		*client, *cl, *list[16];
+	int			revert, y, idx, len, limit;
+
+	color = coma_wm_color("command-input");
+
+	XSelectInput(dpy, clients_win, KeyPressMask);
+	XMapWindow(dpy, clients_win);
+	XRaiseWindow(dpy, clients_win);
+
+	client = client_active;
+	XGetInputFocus(dpy, &focus, &revert);
+	XSetInputFocus(dpy, clients_win, RevertToNone, CurrentTime);
+
+	XClearWindow(dpy, clients_win);
+
+	y = 20;
+	idx = 0;
+
+	TAILQ_FOREACH(cl, &clients, glist) {
+		if (idx > 15)
+			break;
+
+		if (idx < 10)
+			c = '0' + idx;
+		else
+			c = 'a' + (idx - 10);
+
+		if (cl->tag) {
+			len = snprintf(buf, sizeof(buf),
+			    "#%c [%s] [%s]", c, cl->tag, cl->host);
+		} else if (cl->cmd) {
+			len = snprintf(buf, sizeof(buf),
+			    "#%c [%s] [%s]", c, cl->cmd, cl->host);
+		} else {
+			len = snprintf(buf, sizeof(buf),
+			    "#%c [%s]", c, cl->host);
+		}
+
+		if (len == -1 || (size_t)len >= sizeof(buf))
+			len = snprintf(buf, sizeof(buf), "#%c [unknown]", c);
+
+		if (len == -1 || (size_t)len >= sizeof(buf))
+			fatal("failed to construct client list buffer");
+
+		XftDrawStringUtf8(clients_xft, color, font,
+		    5, y, (const FcChar8 *)buf, len);
+
+		y += 15;
+
+		list[idx++] = cl;
+	}
+
+	limit = idx;
+	idx = -1;
+
+	for (;;) {
+		XMaskEvent(dpy, KeyPressMask, &evt);
+
+		if (evt.type != KeyPress)
+			continue;
+
+		sym = XkbKeycodeToKeysym(dpy, evt.xkey.keycode, 0,
+		    (evt.xkey.state & ShiftMask));
+
+		if (sym == XK_Escape)
+			break;
+
+		if (sym >= XK_0 && sym <= XK_9) {
+			idx = sym - XK_0;
+			if (idx < limit)
+				break;
+		}
+
+		if (sym >= XK_a && sym <= XK_f) {
+			idx = (sym - XK_a) + 10;
+			if (idx < limit)
+				break;
+		}
+	}
+
+	XUnmapWindow(dpy, clients_win);
+
+	if (idx != -1 && idx < limit) {
+		frame_active = list[idx]->frame;
+		coma_client_focus(list[idx]);
+		coma_client_warp_pointer(list[idx]);
+	}
+
+	if (client == client_active)
+		XSetInputFocus(dpy, focus, RevertToPointerRoot, CurrentTime);
 }
 
 static void

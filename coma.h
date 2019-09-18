@@ -73,6 +73,7 @@ struct client {
 	u_int16_t		fbw;
 
 	TAILQ_ENTRY(client)	list;
+	TAILQ_ENTRY(client)	glist;
 };
 
 TAILQ_HEAD(client_list, client);
@@ -111,6 +112,7 @@ TAILQ_HEAD(frame_list, frame);
 
 extern Display			*dpy;
 extern XftFont			*font;
+extern struct client_list	clients;
 extern int			restart;
 extern char			myhost[256];
 extern unsigned int		prefix_mod;

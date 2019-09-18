@@ -435,26 +435,11 @@ coma_frame_mouseover(u_int16_t x, u_int16_t y)
 struct client *
 coma_frame_find_client(Window window)
 {
-	struct frame	*frame;
 	struct client	*client;
 
-	TAILQ_FOREACH(frame, &frames, list) {
-		TAILQ_FOREACH(client, &frame->clients, list) {
-			if (client->window == window)
-				return (client);
-		}
-	}
-
-	TAILQ_FOREACH(client, &frame_popup->clients, list) {
+	TAILQ_FOREACH(client, &clients, glist) {
 		if (client->window == window)
 			return (client);
-	}
-
-	if (frame_popup->split != NULL) {
-		TAILQ_FOREACH(client, &frame_popup->split->clients, list) {
-			if (client->window == window)
-				return (client);
-		}
 	}
 
 	return (NULL);
