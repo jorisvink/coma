@@ -31,6 +31,7 @@ static void	config_bind(int, char **);
 static void	config_font(int, char **);
 static void	config_color(int, char **);
 static void	config_prefix(int, char **);
+static void	config_terminal(int, char **);
 
 static void	config_frame_gap(int, char **);
 static void	config_frame_bar(int, char **);
@@ -52,10 +53,11 @@ struct {
 	int			args;
 	void			(*cb)(int, char **);
 } keywords[] = {
+	{ "font",			1,	config_font },
 	{ "bind",			2,	config_bind },
 	{ "color",			2,	config_color },
 	{ "prefix",			1,	config_prefix },
-	{ "font",			1,	config_font },
+	{ "terminal",			1,	config_terminal },
 
 	{ "frame-gap",			1,	config_frame_gap },
 	{ "frame-bar",			1,	config_frame_bar },
@@ -246,6 +248,15 @@ config_prefix(int argc, char **argv)
 
 	if (modmasks[i].mask == 0)
 		config_fatal(argv[0], "invalid mod key '%s'", mod);
+}
+
+static void
+config_terminal(int argc, char **argv)
+{
+	free(terminal);
+
+	if ((terminal = strdup(argv[1])) == NULL)
+		fatal("strdup");
 }
 
 static void

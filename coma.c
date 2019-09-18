@@ -34,6 +34,7 @@ static void	coma_signal(int);
 char			myhost[256];
 int			restart = 0;
 volatile sig_atomic_t	sig_recv = -1;
+char			*terminal = NULL;
 
 static void
 usage(void)
@@ -71,6 +72,9 @@ main(int argc, char *argv[])
 			break;
 		}
 	}
+
+	if ((terminal = strdup(COMA_TERMINAL)) == NULL)
+		fatal("strdup");
 
 	coma_config_parse(config);
 
@@ -136,7 +140,7 @@ coma_spawn_terminal(void)
 {
 	char	*argv[2];
 
-	argv[0] = "xterm";
+	argv[0] = terminal;
 	argv[1] = NULL;
 
 	coma_execute(argv);

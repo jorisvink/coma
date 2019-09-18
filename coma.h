@@ -32,6 +32,7 @@
 #define COMA_VERSION			"1.1"
 #define COMA_WM_FONT			"fixed:pixelsize=13:style=bold"
 
+#define COMA_TERMINAL			"xterm"
 #define COMA_ACTION_PREFIX		"cmd:"
 #define COMA_ACTION_PREFIX_LEN		(sizeof(COMA_ACTION_PREFIX) - 1)
 
@@ -114,6 +115,7 @@ extern int			restart;
 extern char			myhost[256];
 extern unsigned int		prefix_mod;
 extern KeySym			prefix_key;
+extern char			*terminal;
 extern char			*font_name;
 extern int			frame_count;
 extern u_int16_t		frame_gap;
