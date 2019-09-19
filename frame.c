@@ -145,54 +145,67 @@ coma_frame_cleanup(void)
 }
 
 void
-coma_frame_popup(void)
+coma_frame_popup_toggle(void)
+{
+	if (frame_active == frame_popup)
+		coma_frame_popup_hide();
+	else
+		coma_frame_popup_show();
+}
+
+void
+coma_frame_popup_hide(void)
+{
+	struct client	*client;
+
+	TAILQ_FOREACH(client, &frame_popup->clients, list)
+		coma_client_hide(client);
+
+	if (frame_popup->split != NULL) {
+		TAILQ_FOREACH(client,
+		    &frame_popup->split->clients, list) {
+			coma_client_hide(client);
+		}
+	}
+
+	coma_frame_select_any();
+
+	XUnmapWindow(dpy, frame_popup->bar);
+	if (frame_popup->split != NULL)
+		XUnmapWindow(dpy, frame_popup->split->bar);
+}
+
+void
+coma_frame_popup_show(void)
 {
 	struct client	*client, *focus;
 
-	if (frame_active == frame_popup) {
-		TAILQ_FOREACH(client, &frame_popup->clients, list)
-			coma_client_hide(client);
+	if (frame_active->flags & COMA_FRAME_ZOOMED)
+		return;
 
-		if (frame_popup->split != NULL) {
-			TAILQ_FOREACH(client,
-			    &frame_popup->split->clients, list) {
-				coma_client_hide(client);
-			}
-		}
+	focus = frame_popup->focus;
+	frame_active = frame_popup;
 
-		coma_frame_select_any();
+	TAILQ_FOREACH(client, &frame_popup->clients, list)
+		coma_client_unhide(client);
 
-		XUnmapWindow(dpy, frame_popup->bar);
-		if (frame_popup->split != NULL)
-			XUnmapWindow(dpy, frame_popup->split->bar);
-	} else {
-		if (frame_active->flags & COMA_FRAME_ZOOMED)
-			return;
-
-		focus = frame_popup->focus;
-		frame_active = frame_popup;
-
-		TAILQ_FOREACH(client, &frame_popup->clients, list)
+	if (frame_popup->split != NULL) {
+		TAILQ_FOREACH(client,
+		    &frame_popup->split->clients, list) {
 			coma_client_unhide(client);
-
-		if (frame_popup->split != NULL) {
-			TAILQ_FOREACH(client,
-			    &frame_popup->split->clients, list) {
-				coma_client_unhide(client);
-			}
 		}
-
-		XMapRaised(dpy, frame_popup->bar);
-		coma_frame_bar_update(frame_popup);
-
-		if (frame_popup->split != NULL) {
-			XMapRaised(dpy, frame_popup->split->bar);
-			coma_frame_bar_update(frame_popup->split);
-		}
-
-		if (focus != NULL)
-			coma_client_focus(focus);
 	}
+
+	XMapRaised(dpy, frame_popup->bar);
+	coma_frame_bar_update(frame_popup);
+
+	if (frame_popup->split != NULL) {
+		XMapRaised(dpy, frame_popup->split->bar);
+		coma_frame_bar_update(frame_popup->split);
+	}
+
+	if (focus != NULL)
+		coma_client_focus(focus);
 }
 
 void

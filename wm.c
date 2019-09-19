@@ -99,14 +99,14 @@ struct {
 	KeySym		sym;
 	void		(*cb)(void);
 } actions[] = {
-	{ "frame-prev",			XK_h,		coma_frame_prev },
-	{ "frame-next",			XK_l,		coma_frame_next },
-	{ "frame-popup",		XK_space,	coma_frame_popup },
+	{ "frame-prev",		XK_h,		coma_frame_prev },
+	{ "frame-next",		XK_l,		coma_frame_next },
+	{ "frame-popup",	XK_space,	coma_frame_popup_toggle },
 
-	{ "frame-zoom",			XK_z,	coma_frame_zoom },
-	{ "frame-split",		XK_s,	coma_frame_split },
-	{ "frame-merge",		XK_m,	coma_frame_merge },
-	{ "frame-split-next",		XK_f,	coma_frame_split_next },
+	{ "frame-zoom",		XK_z,	coma_frame_zoom },
+	{ "frame-split",	XK_s,	coma_frame_split },
+	{ "frame-merge",	XK_m,	coma_frame_merge },
+	{ "frame-split-next",	XK_f,	coma_frame_split_next },
 
 	{ "frame-move-client-left",	XK_i,	coma_frame_client_move_left },
 	{ "frame-move-client-right", 	XK_o,	coma_frame_client_move_right },
@@ -566,6 +566,7 @@ wm_client_list(void)
 	XEvent			evt;
 	KeySym			sym;
 	Window			focus;
+	struct frame		*prev;
 	XftColor		*color;
 	char			c, buf[128];
 	struct client		*client, *cl, *list[16];
@@ -651,7 +652,15 @@ wm_client_list(void)
 	XUnmapWindow(dpy, clients_win);
 
 	if (idx != -1 && idx < limit) {
+		prev = frame_active;
 		frame_active = list[idx]->frame;
+
+		if (frame_active == frame_popup && prev != frame_popup)
+			coma_frame_popup_show();
+
+		if (frame_active != frame_popup && prev == frame_popup)
+			coma_frame_popup_hide();
+
 		coma_client_focus(list[idx]);
 		coma_client_warp_pointer(list[idx]);
 	}

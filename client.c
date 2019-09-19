@@ -130,7 +130,7 @@ coma_client_destroy(struct client *client)
 
 	if (frame_active == frame_popup) {
 		if (TAILQ_EMPTY(&frame_popup->clients)) {
-			coma_frame_popup();
+			coma_frame_popup_toggle();
 			return;
 		}
 	}
