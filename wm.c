@@ -658,8 +658,10 @@ wm_client_list(void)
 		if (frame_active == frame_popup && prev != frame_popup)
 			coma_frame_popup_show();
 
-		if (frame_active != frame_popup && prev == frame_popup)
+		if (frame_active != frame_popup && prev == frame_popup) {
 			coma_frame_popup_hide();
+			frame_active = list[idx]->frame;
+		}
 
 		coma_client_focus(list[idx]);
 		coma_client_warp_pointer(list[idx]);
