@@ -30,7 +30,7 @@
 #define CLIENT_MOVE_LEFT		1
 #define CLIENT_MOVE_RIGHT		2
 
-static void		frame_focus(struct frame *);
+static void		frame_focus(struct frame *, int);
 static void		frame_bar_create(struct frame *);
 static struct frame	*frame_create(u_int16_t,
 			    u_int16_t, u_int16_t, u_int16_t);
@@ -86,7 +86,7 @@ coma_frame_setup(void)
 	}
 
 	if (offset > (frame_gap * count))
-		offset -= frame_gap * count;
+		offset -= frame_gap;
 
 	x = offset;
 	zoom_width = 0;
@@ -218,7 +218,7 @@ coma_frame_next(void)
 		return;
 
 	if ((next = frame_find_right()) != NULL)
-		frame_focus(next);
+		frame_focus(next, 1);
 }
 
 void
@@ -231,7 +231,7 @@ coma_frame_prev(void)
 		return;
 
 	if ((prev = frame_find_left()) != NULL)
-		frame_focus(prev);
+		frame_focus(prev, 1);
 }
 
 void
@@ -388,7 +388,7 @@ coma_frame_split_next(void)
 	if (frame_active->split == NULL)
 		return;
 
-	frame_focus(frame_active->split);
+	frame_focus(frame_active->split, 1);
 }
 
 void
@@ -407,7 +407,7 @@ coma_frame_select_any(void)
 	if (frame == NULL)
 		frame = TAILQ_FIRST(&frames);
 
-	frame_focus(frame);
+	frame_focus(frame, 1);
 }
 
 void
@@ -633,7 +633,7 @@ coma_frame_bar_click(Window bar, u_int16_t offset)
 
 	if (client != NULL) {
 		frame->focus = client;
-		frame_focus(frame);
+		frame_focus(frame, 0);
 		coma_frame_bar_update(frame);
 	}
 }
@@ -663,7 +663,7 @@ coma_frame_update_titles(void)
 }
 
 static void
-frame_focus(struct frame *frame)
+frame_focus(struct frame *frame, int warp)
 {
 	struct client		*client;
 
@@ -674,7 +674,8 @@ frame_focus(struct frame *frame)
 
 	if (client != NULL) {
 		coma_client_focus(client);
-		coma_client_warp_pointer(client);
+		if (warp)
+			coma_client_warp_pointer(client);
 	}
 }
 
