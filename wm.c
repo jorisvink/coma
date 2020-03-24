@@ -80,9 +80,9 @@ struct {
 	{ "frame-bar-directory",	"#0366d6",	0,	{ 0 }},
 	{ "frame-bar-client-active",	"#ffffff",	0,	{ 0 }},
 	{ "frame-bar-client-inactive",	"#555555",	0,	{ 0 }},
-	{ "command-input",		"#000000",	0,	{ 0 }},
-	{ "command-bar",		"#ffffe2",	0,	{ 0 }},
-	{ "command-border",		"#75efeb",	0,	{ 0 }},
+	{ "command-input",		"#ffffff",	0,	{ 0 }},
+	{ "command-bar",		"#000000",	0,	{ 0 }},
+	{ "command-border",		"#55007a",	0,	{ 0 }},
 	{ NULL,				NULL,		0,	{ 0 }},
 };
 
