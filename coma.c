@@ -30,11 +30,14 @@
 #include "coma.h"
 
 static void	coma_signal(int);
+static void	coma_log_init(void);
 
 char			myhost[256];
 int			restart = 0;
 volatile sig_atomic_t	sig_recv = -1;
 char			*terminal = NULL;
+
+static FILE		*logfp = NULL;
 
 static void
 usage(void)
@@ -59,6 +62,13 @@ main(int argc, char *argv[])
 
 	config = NULL;
 	cargv = argv;
+
+	if ((pw = getpwuid(getuid())) != NULL) {
+		if (chdir(pw->pw_dir) == -1)
+			fatal("chdir(%s): %s", pw->pw_dir, errno_s);
+	}
+
+	coma_log_init();
 	coma_wm_init();
 
 	while ((ch = getopt(argc, argv, "c:h")) != -1) {
@@ -94,11 +104,6 @@ main(int argc, char *argv[])
 		fatal("sigaction: %s", errno_s);
 	if (sigaction(SIGCHLD, &sa, NULL) == -1)
 		fatal("sigaction: %s", errno_s);
-
-	if ((pw = getpwuid(getuid())) != NULL) {
-		if (chdir(pw->pw_dir) == -1)
-			fatal("chdir(%s): %s", pw->pw_dir, errno_s);
-	}
 
 	if (gethostname(myhost, sizeof(myhost)) == -1)
 		fatal("gethostname: %s", errno_s);
@@ -282,6 +287,22 @@ coma_split_string(char *input, const char *delim, char **out, size_t ele)
 }
 
 void
+coma_log(const char *fmt, ...)
+{
+	va_list		args;
+
+	if (logfp == NULL)
+		return;
+
+	va_start(args, fmt);
+	vfprintf(logfp, fmt, args);
+	va_end(args);
+
+	fprintf(logfp, "\n");
+	fflush(logfp);
+}
+
+void
 fatal(const char *fmt, ...)
 {
 	va_list		args;
@@ -290,10 +311,27 @@ fatal(const char *fmt, ...)
 
 	va_start(args, fmt);
 	vfprintf(stderr, fmt, args);
+
+	if (logfp != NULL) {
+		fprintf(logfp, "FATAL: ");
+		vfprintf(logfp, fmt, args);
+		fprintf(logfp, "\n");
+		fflush(logfp);
+	}
+
 	va_end(args);
 
 	fprintf(stderr, "\n");
 	exit(1);
+}
+
+static void
+coma_log_init(void)
+{
+	if ((logfp = fopen(COMA_LOG_FILE, "a")) == NULL)
+		fatal("failed to open logfile: %s", strerror(errno));
+
+	coma_log("coma %s starting", COMA_VERSION);
 }
 
 static void

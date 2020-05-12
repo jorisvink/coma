@@ -40,6 +40,7 @@ static void	config_frame_width(int, char **);
 static void	config_frame_height(int, char **);
 static void	config_frame_offset(int, char **);
 static void	config_frame_border(int, char **);
+static void	config_frame_layout(int, char **);
 
 static void		config_parse(const char *);
 static void		config_fatal(const char *, const char *, ...);
@@ -66,6 +67,7 @@ struct {
 	{ "frame-height",		1,	config_frame_height },
 	{ "frame-offset",		1,	config_frame_offset },
 	{ "frame-border",		1,	config_frame_border },
+	{ "frame-layout",		1,	config_frame_layout },
 
 	{ NULL, 0, NULL }
 };
@@ -292,13 +294,23 @@ config_frame_height(int argc, char **argv)
 static void
 config_frame_offset(int argc, char **argv)
 {
-	frame_offset = config_strtonum(argv[0], argv[1], 10, 1, USHRT_MAX);
+	frame_offset = config_strtonum(argv[0], argv[1], 10, 0, USHRT_MAX);
 }
 
 static void
 config_frame_border(int argc, char **argv)
 {
-	frame_border= config_strtonum(argv[0], argv[1], 10, 1, USHRT_MAX);
+	frame_border = config_strtonum(argv[0], argv[1], 10, 0, USHRT_MAX);
+}
+
+static void
+config_frame_layout(int argc, char **argv)
+{
+	if (!strcmp(argv[1], "small-large")) {
+		frame_layout = COMA_FRAME_LAYOUT_SMALL_LARGE;
+	} else {
+		fatal("unknown frame-layout '%s'", argv[1]);
+	}
 }
 
 static char *

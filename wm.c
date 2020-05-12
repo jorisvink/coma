@@ -826,7 +826,7 @@ wm_error(Display *edpy, XErrorEvent *error)
 	XGetErrorDatabaseText(dpy, "XRequest", num, "<unknown>",
 	    req, sizeof(req));
 
-	printf("%s: %s\n", req, msg);
+	coma_log("%s: %s", req, msg);
 
 	return (0);
 }

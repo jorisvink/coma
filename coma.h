@@ -36,8 +36,12 @@
 #define COMA_ACTION_PREFIX		"cmd:"
 #define COMA_ACTION_PREFIX_LEN		(sizeof(COMA_ACTION_PREFIX) - 1)
 
+#define COMA_LOG_FILE			".coma.log"
 #define COMA_MOD_KEY			ControlMask
 #define COMA_PREFIX_KEY			XK_t
+
+#define COMA_FRAME_LAYOUT_DEFAULT	1
+#define COMA_FRAME_LAYOUT_SMALL_LARGE	2
 
 #define COMA_FRAME_BORDER	5
 #define COMA_FRAME_GAP		20
@@ -120,11 +124,12 @@ extern KeySym			prefix_key;
 extern char			*terminal;
 extern char			*font_name;
 extern int			frame_count;
+extern int			frame_layout;
 extern u_int16_t		frame_gap;
 extern u_int16_t		frame_bar;
 extern u_int16_t		frame_width;
 extern u_int16_t		frame_height;
-extern u_int16_t		frame_offset;
+extern int			frame_offset;
 extern u_int16_t		frame_border;
 extern u_int16_t		screen_width;
 extern u_int16_t		screen_height;
@@ -134,6 +139,7 @@ extern struct client		*client_active;
 extern volatile sig_atomic_t	sig_recv;
 
 void		fatal(const char *, ...);
+void		coma_log(const char *, ...);
 
 void		coma_reap(void);
 void		coma_command(char *);

@@ -30,6 +30,9 @@
 #define CLIENT_MOVE_LEFT		1
 #define CLIENT_MOVE_RIGHT		2
 
+static void	frame_layout_default(void);
+static void	frame_layout_small_large(void);
+
 static void		frame_focus(struct frame *, int);
 static void		frame_bar_create(struct frame *);
 static struct frame	*frame_create(u_int16_t,
@@ -43,7 +46,7 @@ static struct frame_list	frames;
 static u_int16_t		zoom_width = 0;
 
 int				frame_count = -1;
-u_int16_t			frame_offset = 0;
+int				frame_offset = -1;
 u_int16_t			frame_height = 0;
 u_int16_t			frame_y_offset = 0;
 struct frame			*frame_popup = NULL;
@@ -52,76 +55,23 @@ u_int16_t			frame_gap = COMA_FRAME_GAP;
 u_int16_t			frame_bar = COMA_FRAME_BAR;
 u_int16_t			frame_width = COMA_FRAME_WIDTH;
 u_int16_t			frame_border = COMA_FRAME_BORDER;
+int				frame_layout = COMA_FRAME_LAYOUT_DEFAULT;
 
 void
 coma_frame_setup(void)
 {
-	struct frame	*frame;
-	u_int16_t	i, count, width, offset, x;
-
 	TAILQ_INIT(&frames);
 
-	count = 0;
-	width = screen_width - frame_offset;
-
-	if (frame_height == 0) {
-		frame_y_offset = frame_gap;
-		frame_height = screen_height - (frame_gap * 2) - frame_bar -
-		    (frame_border * 2);
-	} else {
-		frame_y_offset = (screen_height - frame_height) / 2;
+	switch (frame_layout) {
+	case COMA_FRAME_LAYOUT_DEFAULT:
+		frame_layout_default();
+		break;
+	case COMA_FRAME_LAYOUT_SMALL_LARGE:
+		frame_layout_small_large();
+		break;
+	default:
+		fatal("unknown frame layout %d", frame_layout);
 	}
-
-	while (width > frame_width) {
-		if (frame_count != -1 && count == frame_count)
-			break;
-		count++;
-		width -= frame_width;
-	}
-
-	if (frame_offset != 0) {
-		offset = frame_offset;
-	} else {
-		offset = width / 2;
-	}
-
-	if (offset > (frame_gap * count))
-		offset -= frame_gap;
-
-	x = offset;
-	zoom_width = 0;
-
-	for (i = 0; i < count; i++) {
-		frame = frame_create(frame_width,
-		    frame_height, offset, frame_y_offset);
-		frame->flags = COMA_FRAME_INLIST;
-		TAILQ_INSERT_TAIL(&frames, frame, list);
-		offset += frame_width + frame_gap + (frame_border * 2);
-		zoom_width += frame_width + frame_gap + (frame_border * 2);
-	}
-
-	if (frame_offset != 0) {
-		width = screen_width / 2;
-
-		if (frame_offset < width) {
-			i = frame_offset;
-			width = screen_width;
-			offset = frame_offset - (i / 2);
-			width -= i;
-		} else {
-			i = frame_offset - width;
-			offset = width + (i / 2);
-			width -= i * 2;
-		}
-	} else {
-		offset = frame_gap;
-		width = screen_width - (frame_gap * 2) - (frame_border * 2);
-	}
-
-	frame_popup = frame_create(width, frame_height, offset, frame_y_offset);
-
-	frame_offset = x;
-	zoom_width -= frame_gap + (frame_border * 2);
 
 	frame_active = TAILQ_FIRST(&frames);
 }
@@ -660,6 +610,118 @@ coma_frame_update_titles(void)
 			coma_client_update_title(client);
 		coma_frame_bar_update(frame_popup->split);
 	}
+}
+
+static void
+frame_layout_default(void)
+{
+	struct frame	*frame;
+	u_int16_t	i, count, width, offset, x;
+
+	count = 0;
+
+	if (frame_offset != -1)
+		width = screen_width - frame_offset;
+	else
+		width = screen_width;
+
+	if (frame_height == 0) {
+		frame_y_offset = frame_gap;
+		frame_height = screen_height - (frame_gap * 2) - frame_bar -
+		    (frame_border * 2);
+	} else {
+		frame_y_offset = (screen_height - frame_height) / 2;
+	}
+
+	while (width > frame_width) {
+		if (frame_count != -1 && count == frame_count)
+			break;
+		count++;
+		width -= frame_width;
+	}
+
+	if (frame_offset != -1) {
+		offset = frame_offset;
+	} else {
+		offset = width / 2;
+	}
+
+	if (offset > (frame_gap * count))
+		offset -= frame_gap;
+
+	x = offset;
+	zoom_width = 0;
+
+	for (i = 0; i < count; i++) {
+		frame = frame_create(frame_width,
+		    frame_height, offset, frame_y_offset);
+		frame->flags = COMA_FRAME_INLIST;
+		TAILQ_INSERT_TAIL(&frames, frame, list);
+		offset += frame_width + frame_gap + (frame_border * 2);
+		zoom_width += frame_width + frame_gap + (frame_border * 2);
+	}
+
+	if (frame_offset != 0) {
+		width = screen_width / 2;
+
+		if (frame_offset < width) {
+			i = frame_offset;
+			width = screen_width;
+			offset = frame_offset - (i / 2);
+			width -= i;
+		} else {
+			i = frame_offset - width;
+			offset = width + (i / 2);
+			width -= i * 2;
+		}
+	} else {
+		offset = frame_gap;
+		width = screen_width - (frame_gap * 2) - (frame_border * 2);
+	}
+
+	frame_popup = frame_create(width, frame_height, offset, frame_y_offset);
+
+	frame_offset = x;
+	zoom_width -= frame_gap + (frame_border * 2);
+}
+
+static void
+frame_layout_small_large(void)
+{
+	struct frame	*frame;
+	u_int16_t	offset, width;
+
+	zoom_width = 0;
+
+	if (frame_offset == 0) {
+		offset = frame_gap;
+		frame_offset = offset;
+	} else {
+		offset = frame_offset;
+	}
+
+	frame_y_offset = frame_gap;
+	frame_height = screen_height - (frame_gap * 2) - frame_bar -
+	    (frame_border * 2);
+
+	/* Small frame on the left hand-side. */
+	frame = frame_create(frame_width, frame_height,
+	    offset, frame_y_offset);
+	frame->flags = COMA_FRAME_INLIST;
+	TAILQ_INSERT_TAIL(&frames, frame, list);
+	offset += frame_width + frame_gap + (frame_border * 2);
+
+	/* Rest of the screen covered by large frame. */
+	width = screen_width - offset - frame_gap - (frame_border * 2);
+	frame = frame_create(width, frame_height, offset, frame_y_offset);
+	frame->flags = COMA_FRAME_INLIST;
+	TAILQ_INSERT_TAIL(&frames, frame, list);
+
+	/* Popup covers entire screen. */
+	frame_popup = frame_create(screen_width - (frame_border * 2) -
+	    (frame_gap * 2), frame_height, frame_gap, frame_y_offset);
+
+	zoom_width = screen_width - (frame_gap * 2);
 }
 
 static void
