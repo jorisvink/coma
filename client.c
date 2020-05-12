@@ -35,18 +35,26 @@ void
 coma_client_create(Window window)
 {
 	XWindowAttributes	attr;
+	struct frame		*frame;
 	struct client		*client;
+	u_int32_t		frame_id;
 
 	XGetWindowAttributes(dpy, window, &attr);
 
-	client = coma_calloc(1, sizeof(*client));
+	if (coma_wm_property_read(window, atom_frame_id, &frame_id) == -1) {
+		frame = frame_active;
+	} else {
+		if ((frame = coma_frame_lookup(frame_id)) == NULL)
+			frame = frame_active;
+	}
 
+	client = coma_calloc(1, sizeof(*client));
 	TAILQ_INSERT_TAIL(&clients, client, glist);
 
-	if (frame_active->focus != NULL) {
-		TAILQ_INSERT_BEFORE(frame_active->focus, client, list);
+	if (frame->focus != NULL) {
+		TAILQ_INSERT_BEFORE(frame->focus, client, list);
 	} else {
-		TAILQ_INSERT_HEAD(&frame_active->clients, client, list);
+		TAILQ_INSERT_HEAD(&frame->clients, client, list);
 	}
 
 	if (client_active == NULL)
@@ -56,10 +64,11 @@ coma_client_create(Window window)
 	client->y = attr.y;
 	client->w = attr.width;
 	client->h = attr.height;
+
+	client->frame = frame;
 	client->window = window;
 	client->id = client_id++;
 	client->bw = frame_border;
-	client->frame = frame_active;
 
 	coma_client_update_title(client);
 	coma_frame_bar_update(client->frame);
@@ -73,7 +82,10 @@ coma_client_create(Window window)
 	coma_wm_register_prefix(client->window);
 	coma_client_adjust(client);
 	coma_client_map(client);
-	coma_frame_bar_update(frame_active);
+	coma_frame_bar_update(frame);
+
+	if (frame == frame_popup && frame != frame_active)
+		coma_client_hide(client);
 
 	XSync(dpy, False);
 
@@ -159,6 +171,9 @@ coma_client_adjust(struct client *client)
 	client->y = client->frame->y;
 
 	coma_client_send_configure(client);
+
+	coma_wm_property_write(client->window,
+	    atom_frame_id, client->frame->id);
 }
 
 void
@@ -215,9 +230,9 @@ coma_client_focus(struct client *client)
 	}
 
 	client_active = client;
-	frame_active->focus = client;
+	client->frame->focus = client;
 
-	coma_frame_bar_update(frame_active);
+	coma_frame_bar_update(client->frame);
 
 	XSync(dpy, False);
 }

@@ -43,6 +43,7 @@ static struct frame	*frame_find_left(void);
 static struct frame	*frame_find_right(void);
 
 static struct frame_list	frames;
+static u_int32_t		frame_id = 1;
 static u_int16_t		zoom_width = 0;
 
 int				frame_count = -1;
@@ -685,6 +686,22 @@ frame_layout_default(void)
 	zoom_width -= frame_gap + (frame_border * 2);
 }
 
+struct frame *
+coma_frame_lookup(u_int32_t id)
+{
+	struct frame	*frame;
+
+	if (frame_popup->id == id)
+		return (frame_popup);
+
+	TAILQ_FOREACH(frame, &frames, list) {
+		if (frame->id == id)
+			return (frame);
+	}
+
+	return (NULL);
+}
+
 static void
 frame_layout_small_large(void)
 {
@@ -749,6 +766,7 @@ frame_create(u_int16_t width, u_int16_t height, u_int16_t x, u_int16_t y)
 	frame = coma_calloc(1, sizeof(*frame));
 
 	frame->bar = None;
+	frame->id = frame_id++;
 
 	frame->x = x;
 	frame->y = y;

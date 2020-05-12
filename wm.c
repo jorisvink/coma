@@ -19,6 +19,7 @@
 #include <sys/queue.h>
 
 #include <X11/Xlib.h>
+#include <X11/Xatom.h>
 #include <X11/XKBlib.h>
 
 #include <poll.h>
@@ -39,6 +40,7 @@ static void	wm_teardown(void);
 static void	wm_screen_init(void);
 static void	wm_client_list(void);
 static void	wm_run_command(char *);
+static void	wm_register_atoms(void);
 static int	wm_input(char *, size_t, void (*autocomplete)(char *, size_t));
 
 static void	wm_handle_prefix(XKeyEvent *);
@@ -56,6 +58,7 @@ Display		*dpy = NULL;
 XftFont		*font = NULL;
 u_int16_t	screen_width = 0;
 u_int16_t	screen_height = 0;
+Atom		atom_frame_id = None;
 
 char		*font_name = NULL;
 unsigned int	prefix_mod = COMA_MOD_KEY;
@@ -146,6 +149,7 @@ coma_wm_setup(void)
 
 	XSetErrorHandler(wm_error);
 
+	wm_register_atoms();
 	wm_screen_init();
 }
 
@@ -157,6 +161,7 @@ coma_wm_run(void)
 	int			running, ret;
 
 	running = 1;
+	restart = 0;
 
 	while (running) {
 		if (sig_recv != -1) {
@@ -300,6 +305,44 @@ coma_wm_register_color(const char *name, const char *rgb)
 	return (0);
 }
 
+void
+coma_wm_property_write(Window win, Atom prop, u_int32_t value)
+{
+	(void)XChangeProperty(dpy, win, prop, XA_INTEGER, 8,
+	    PropModeReplace, (unsigned char *)&value, sizeof(value));
+
+	coma_log("win 0x%08x prop 0x%08x = %u", win, prop, value);
+}
+
+int
+coma_wm_property_read(Window win, Atom prop, u_int32_t *val)
+{
+	int		ret;
+	Atom		type;
+	unsigned char	*data;
+	int		format;
+	unsigned long	nitems, bytes;
+
+	ret = XGetWindowProperty(dpy, win, prop, 0, 8, 0, XA_INTEGER,
+	    &type, &format, &nitems, &bytes, &data);
+
+	if (ret != Success || type != XA_INTEGER) {
+		coma_log("cannot get prop 0x%08x from 0x%08x", prop, win);
+		return (-1);
+	}
+
+	if (format != 8) {
+		coma_log("win 0x%08x bad format %d prop 0x%08x",
+		    win, format, prop);
+		return (-1);
+	}
+
+	XFree(data);
+	memcpy(val, data, sizeof(*val));
+
+	return (0);
+}
+
 static void
 wm_restart(void)
 {
@@ -373,6 +416,7 @@ wm_screen_init(void)
 	if (XQueryTree(dpy, root, &wr, &wp, &childwin, &windows)) {
 		for (idx = 0; idx < windows; idx++)
 			coma_client_create(childwin[idx]);
+		XFree(childwin);
 	}
 
 	coma_frame_bars_create();
@@ -401,6 +445,15 @@ wm_screen_init(void)
 		fatal("XftDrawCreate failed");
 
 	XSync(dpy, False);
+}
+
+static void
+wm_register_atoms(void)
+{
+	if ((atom_frame_id = XInternAtom(dpy, "_COMA_WM_FRAME_ID", 0)) == None)
+		fatal("failed to register _COMA_WM_FRAME_ID");
+
+	coma_log("_COMA_WM_FRAME_ID Atom = 0x%08x", atom_frame_id);
 }
 
 static void
@@ -449,7 +502,7 @@ wm_run_command(char *cmd)
 	local = 1;
 	title = -1;
 
-	argv[off++] = "xterm";
+	argv[off++] = terminal;
 	argv[off++] = "-hold";
 
 	if (client_active != NULL && client_active->host != NULL) {

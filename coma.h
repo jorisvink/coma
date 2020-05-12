@@ -86,7 +86,7 @@ TAILQ_HEAD(client_list, client);
 #define COMA_FRAME_ZOOMED	0x0002
 
 struct frame {
-	u_int16_t		id;
+	u_int32_t		id;
 	int			flags;
 	int			screen;
 
@@ -133,6 +133,7 @@ extern int			frame_offset;
 extern u_int16_t		frame_border;
 extern u_int16_t		screen_width;
 extern u_int16_t		screen_height;
+extern Atom			atom_frame_id;
 extern struct frame		*frame_popup;
 extern struct frame		*frame_active;
 extern struct client		*client_active;
@@ -158,7 +159,11 @@ void		coma_wm_setup(void);
 XftColor	*coma_wm_color(const char *);
 void		coma_wm_register_prefix(Window);
 int		coma_wm_register_action(const char *, KeySym);
+void		coma_wm_property_write(Window, Atom, u_int32_t);
+int		coma_wm_property_read(Window, Atom, u_int32_t *);
 int		coma_wm_register_color(const char *, const char *);
+
+struct frame	*coma_frame_lookup(u_int32_t);
 
 void		coma_frame_prev(void);
 void		coma_frame_next(void);
