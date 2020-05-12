@@ -29,7 +29,7 @@
 
 #define errno_s				strerror(errno)
 
-#define COMA_VERSION			"1.1"
+#define COMA_VERSION			"1.2"
 #define COMA_WM_FONT			"fixed:pixelsize=13:style=bold"
 
 #define COMA_TERMINAL			"xterm"
