@@ -194,7 +194,7 @@ coma_wm_run(void)
 		pfd[0].fd = ConnectionNumber(dpy);
 		pfd[0].events = POLLIN;
 
-		ret = poll(pfd, 1, 1000);
+		ret = poll(pfd, 1, 500);
 		if (ret == -1) {
 			if (errno == EINTR)
 				continue;
@@ -229,9 +229,10 @@ coma_wm_run(void)
 				wm_handle_prefix(&evt.xkey);
 				break;
 			}
+
+			XSync(dpy, False);
 		}
 
-		XSync(dpy, True);
 	}
 
 	wm_teardown();

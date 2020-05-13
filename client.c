@@ -102,8 +102,10 @@ coma_client_create(Window window)
 		coma_client_hide(client);
 	}
 
-	if (client_discovery == 0)
+	if (client_discovery == 0) {
 		coma_frame_bar_update(frame);
+		XSync(dpy, False);
+	}
 }
 
 void
