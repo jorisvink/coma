@@ -466,10 +466,12 @@ wm_screen_init(void)
 		fatal("XftDrawCreate failed");
 
 	if (coma_wm_property_read(root, atom_client_act, &id) == 0) {
-		coma_log("client %u was active", id);
+		coma_log("client 0x%08x was active", id);
 		if ((client = coma_client_find(id)) != NULL) {
 			coma_client_focus(client);
 			coma_frame_focus(client->frame, 1);
+			if (client->frame == frame_popup)
+				coma_frame_popup_show();
 			coma_frame_bar_update(client->frame);
 		}
 	}
