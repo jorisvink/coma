@@ -32,8 +32,8 @@
 
 static void	frame_layout_default(void);
 static void	frame_layout_small_large(void);
+static void	frame_bar_sort(struct frame *);
 
-static void		frame_focus(struct frame *, int);
 static void		frame_bar_create(struct frame *);
 static struct frame	*frame_create(u_int16_t,
 			    u_int16_t, u_int16_t, u_int16_t);
@@ -169,7 +169,7 @@ coma_frame_next(void)
 		return;
 
 	if ((next = frame_find_right()) != NULL)
-		frame_focus(next, 1);
+		coma_frame_focus(next, 1);
 }
 
 void
@@ -182,7 +182,7 @@ coma_frame_prev(void)
 		return;
 
 	if ((prev = frame_find_left()) != NULL)
-		frame_focus(prev, 1);
+		coma_frame_focus(prev, 1);
 }
 
 void
@@ -339,7 +339,7 @@ coma_frame_split_next(void)
 	if (frame_active->split == NULL)
 		return;
 
-	frame_focus(frame_active->split, 1);
+	coma_frame_focus(frame_active->split, 1);
 }
 
 void
@@ -358,7 +358,23 @@ coma_frame_select_any(void)
 	if (frame == NULL)
 		frame = TAILQ_FIRST(&frames);
 
-	frame_focus(frame, 1);
+	coma_frame_focus(frame, 1);
+}
+
+void
+coma_frame_select_id(u_int32_t id)
+{
+	struct frame	*frame;
+
+	TAILQ_FOREACH(frame, &frames, list) {
+		if (frame->id == id) {
+			coma_frame_focus(frame, 1);
+			return;
+		}
+	}
+
+	if (frame_popup->id == id)
+		coma_frame_popup_show();
 }
 
 void
@@ -446,6 +462,18 @@ coma_frame_zoom(void)
 }
 
 void
+coma_frame_bar_sort(void)
+{
+	struct frame		*frame;
+
+	TAILQ_FOREACH(frame, &frames, list)
+		frame_bar_sort(frame);
+
+	frame_bar_sort(frame_popup);
+	coma_frame_bars_update();
+}
+
+void
 coma_frame_bars_create(void)
 {
 	struct frame		*frame;
@@ -474,6 +502,7 @@ void
 coma_frame_bar_update(struct frame *frame)
 {
 	XGlyphInfo		gi;
+	u_int32_t		pos;
 	size_t			slen;
 	u_int16_t		offset;
 	struct client		*client;
@@ -484,6 +513,16 @@ coma_frame_bar_update(struct frame *frame)
 	/* Can be called before bars are setup. */
 	if (frame->bar == None)
 		return;
+
+	pos = 1;
+	TAILQ_FOREACH_REVERSE(client, &frame->clients, client_list, list) {
+		client->pos = pos++;
+		if (client->pos != client->prev) {
+			coma_wm_property_write(client->window,
+			    atom_client_pos, client->pos);
+			client->prev = client->pos;
+		}
+	}
 
 	idx = 0;
 	offset = 5;
@@ -584,7 +623,7 @@ coma_frame_bar_click(Window bar, u_int16_t offset)
 
 	if (client != NULL) {
 		frame->focus = client;
-		frame_focus(frame, 0);
+		coma_frame_focus(frame, 0);
 		coma_frame_bar_update(frame);
 	}
 }
@@ -702,6 +741,23 @@ coma_frame_lookup(u_int32_t id)
 	return (NULL);
 }
 
+void
+coma_frame_focus(struct frame *frame, int warp)
+{
+	struct client		*client;
+
+	frame_active = frame;
+
+	if ((client = frame->focus) == NULL)
+		client = TAILQ_FIRST(&frame->clients);
+
+	if (client != NULL) {
+		coma_client_focus(client);
+		if (warp)
+			coma_client_warp_pointer(client);
+	}
+}
+
 static void
 frame_layout_small_large(void)
 {
@@ -739,23 +795,6 @@ frame_layout_small_large(void)
 	    (frame_gap * 2), frame_height, frame_gap, frame_y_offset);
 
 	zoom_width = screen_width - (frame_gap * 2);
-}
-
-static void
-frame_focus(struct frame *frame, int warp)
-{
-	struct client		*client;
-
-	frame_active = frame;
-
-	if ((client = frame->focus) == NULL)
-		client = TAILQ_FIRST(&frame->clients);
-
-	if (client != NULL) {
-		coma_client_focus(client);
-		if (warp)
-			coma_client_warp_pointer(client);
-	}
 }
 
 static struct frame *
@@ -812,6 +851,24 @@ frame_bar_create(struct frame *frame)
 		fatal("XftDrawCreate failed");
 
 	XMapWindow(dpy, frame->bar);
+}
+
+static void
+frame_bar_sort(struct frame *frame)
+{
+	struct client	*c1, *c2, *next;
+
+	for (c1 = TAILQ_FIRST(&frame->clients); c1 != NULL; c1 = next) {
+		next = TAILQ_NEXT(c1, list);
+		TAILQ_FOREACH(c2, &frame->clients, list) {
+			if (c1->pos < c2->pos) {
+				TAILQ_REMOVE(&frame->clients, c1, list);
+				TAILQ_INSERT_AFTER(&frame->clients,
+				    c2, c1, list);
+				break;
+			}
+		}
+	}
 }
 
 static struct frame *

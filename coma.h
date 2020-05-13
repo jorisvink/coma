@@ -56,6 +56,8 @@ struct frame;
 
 struct client {
 	u_int32_t		id;
+	u_int32_t		pos;
+	u_int32_t		prev;
 	u_int32_t		flags;
 
 	Window			window;
@@ -133,11 +135,17 @@ extern int			frame_offset;
 extern u_int16_t		frame_border;
 extern u_int16_t		screen_width;
 extern u_int16_t		screen_height;
-extern Atom			atom_frame_id;
 extern struct frame		*frame_popup;
 extern struct frame		*frame_active;
 extern struct client		*client_active;
+extern int			client_discovery;
 extern volatile sig_atomic_t	sig_recv;
+
+extern Atom			atom_frame_id;
+extern Atom			atom_client_pos;
+extern Atom			atom_client_act;
+extern Atom			atom_net_wm_pid;
+extern Atom			atom_client_visible;
 
 void		fatal(const char *, ...);
 void		coma_log(const char *, ...);
@@ -172,6 +180,7 @@ void		coma_frame_setup(void);
 void		coma_frame_split(void);
 void		coma_frame_merge(void);
 void		coma_frame_cleanup(void);
+void		coma_frame_bar_sort(void);
 void		coma_frame_popup_show(void);
 void		coma_frame_popup_hide(void);
 void		coma_frame_split_next(void);
@@ -182,8 +191,10 @@ void		coma_frame_bars_create(void);
 void		coma_frame_bars_update(void);
 void		coma_frame_popup_toggle(void);
 void		coma_frame_update_titles(void);
+void		coma_frame_select_id(u_int32_t);
 void		coma_frame_client_move_left(void);
 void		coma_frame_client_move_right(void);
+void		coma_frame_focus(struct frame *, int);
 void		coma_frame_bar_update(struct frame *);
 void		coma_frame_bar_click(Window, u_int16_t);
 void		coma_frame_mouseover(u_int16_t, u_int16_t);

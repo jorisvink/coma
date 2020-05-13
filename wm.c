@@ -39,10 +39,12 @@ static void	wm_restart(void);
 static void	wm_teardown(void);
 static void	wm_screen_init(void);
 static void	wm_client_list(void);
+static void	wm_query_atoms(void);
+static Atom	wm_atom(const char *);
 static void	wm_run_command(char *);
-static void	wm_register_atoms(void);
 static int	wm_input(char *, size_t, void (*autocomplete)(char *, size_t));
 
+static void	wm_client_check(Window);
 static void	wm_handle_prefix(XKeyEvent *);
 static void	wm_mouse_click(XButtonEvent *);
 static void	wm_mouse_motion(XMotionEvent *);
@@ -58,7 +60,13 @@ Display		*dpy = NULL;
 XftFont		*font = NULL;
 u_int16_t	screen_width = 0;
 u_int16_t	screen_height = 0;
+int		client_discovery = 0;
+
 Atom		atom_frame_id = None;
+Atom		atom_client_pos = None;
+Atom		atom_client_act = None;
+Atom		atom_net_wm_pid = None;
+Atom		atom_client_visible = None;
 
 char		*font_name = NULL;
 unsigned int	prefix_mod = COMA_MOD_KEY;
@@ -145,11 +153,11 @@ coma_wm_setup(void)
 {
 	XSetErrorHandler(wm_error_active);
 	XSelectInput(dpy, DefaultRootWindow(dpy), SubstructureRedirectMask);
-	XSync(dpy, False);
+	XSync(dpy, True);
 
 	XSetErrorHandler(wm_error);
 
-	wm_register_atoms();
+	wm_query_atoms();
 	wm_screen_init();
 }
 
@@ -186,7 +194,7 @@ coma_wm_run(void)
 		pfd[0].fd = ConnectionNumber(dpy);
 		pfd[0].events = POLLIN;
 
-		ret = poll(pfd, 1, 500);
+		ret = poll(pfd, 1, 1000);
 		if (ret == -1) {
 			if (errno == EINTR)
 				continue;
@@ -222,6 +230,8 @@ coma_wm_run(void)
 				break;
 			}
 		}
+
+		XSync(dpy, True);
 	}
 
 	wm_teardown();
@@ -308,8 +318,8 @@ coma_wm_register_color(const char *name, const char *rgb)
 void
 coma_wm_property_write(Window win, Atom prop, u_int32_t value)
 {
-	(void)XChangeProperty(dpy, win, prop, XA_INTEGER, 8,
-	    PropModeReplace, (unsigned char *)&value, sizeof(value));
+	(void)XChangeProperty(dpy, win, prop, XA_INTEGER, 32,
+	    PropModeReplace, (unsigned char *)&value, 1);
 
 	coma_log("win 0x%08x prop 0x%08x = %u", win, prop, value);
 }
@@ -323,22 +333,28 @@ coma_wm_property_read(Window win, Atom prop, u_int32_t *val)
 	int		format;
 	unsigned long	nitems, bytes;
 
-	ret = XGetWindowProperty(dpy, win, prop, 0, 8, 0, XA_INTEGER,
+	ret = XGetWindowProperty(dpy, win, prop, 0, 32, False, AnyPropertyType,
 	    &type, &format, &nitems, &bytes, &data);
 
-	if (ret != Success || type != XA_INTEGER) {
-		coma_log("cannot get prop 0x%08x from 0x%08x", prop, win);
+	if (ret != Success) {
+		coma_log("prop=0x%08x win=0x%08x bad prop", prop, win);
 		return (-1);
 	}
 
-	if (format != 8) {
-		coma_log("win 0x%08x bad format %d prop 0x%08x",
-		    win, format, prop);
+	if (type != XA_INTEGER && type != XA_CARDINAL) {
+		coma_log("prop=0x%08x win=0x%08x type=0x%08x bad type",
+		    prop, win, type);
 		return (-1);
 	}
 
-	XFree(data);
+	if (nitems != 1) {
+		coma_log("prop=0x%08x win=0x%08x bad nitems %d",
+		    prop, win, nitems);
+		return (-1);
+	}
+
 	memcpy(val, data, sizeof(*val));
+	XFree(data);
 
 	return (0);
 }
@@ -372,7 +388,7 @@ wm_teardown(void)
 	XDestroyWindow(dpy, clients_win);
 
 	XUngrabKeyboard(dpy, CurrentTime);
-	XSync(dpy, False);
+	XSync(dpy, True);
 	XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
 	XCloseDisplay(dpy);
 }
@@ -380,7 +396,9 @@ wm_teardown(void)
 static void
 wm_screen_init(void)
 {
+	u_int32_t	id;
 	int		screen;
+	struct client	*client;
 	Visual		*visual;
 	Colormap	colormap;
 	XftColor	*bg, *border;
@@ -412,14 +430,17 @@ wm_screen_init(void)
 
 	coma_frame_setup();
 	coma_wm_register_prefix(root);
+	coma_frame_bars_create();
+
+	client_discovery = 1;
 
 	if (XQueryTree(dpy, root, &wr, &wp, &childwin, &windows)) {
 		for (idx = 0; idx < windows; idx++)
-			coma_client_create(childwin[idx]);
+			wm_client_check(childwin[idx]);
 		XFree(childwin);
 	}
 
-	coma_frame_bars_create();
+	coma_frame_bar_sort();
 
 	key_input = XCreateSimpleWindow(dpy, root,
 	    0, 0, 1, 1, 0, WhitePixel(dpy, screen), BlackPixel(dpy, screen));
@@ -444,16 +465,44 @@ wm_screen_init(void)
 	    clients_win, visual, colormap)) == NULL)
 		fatal("XftDrawCreate failed");
 
-	XSync(dpy, False);
+	if (coma_wm_property_read(root, atom_client_act, &id) == 0) {
+		coma_log("client %u was active", id);
+		if ((client = coma_client_find(id)) != NULL) {
+			coma_client_focus(client);
+			coma_frame_focus(client->frame, 1);
+			coma_frame_bar_update(client->frame);
+		}
+	}
+
+	client_discovery = 0;
+	XSync(dpy, True);
 }
 
 static void
-wm_register_atoms(void)
+wm_query_atoms(void)
 {
-	if ((atom_frame_id = XInternAtom(dpy, "_COMA_WM_FRAME_ID", 0)) == None)
-		fatal("failed to register _COMA_WM_FRAME_ID");
+	atom_net_wm_pid = wm_atom("_NET_WM_PID");
+	atom_frame_id = wm_atom("_COMA_WM_FRAME_ID");
+	atom_client_pos = wm_atom("_COMA_WM_CLIENT_POS");
+	atom_client_act = wm_atom("_COMA_WM_CLIENT_ACT");
+	atom_client_visible = wm_atom("_COMA_WM_CLIENT_VISIBLE");
 
+	coma_log("_NET_WM_PID Atom = 0x%08x", atom_net_wm_pid);
 	coma_log("_COMA_WM_FRAME_ID Atom = 0x%08x", atom_frame_id);
+	coma_log("_COMA_WM_CLIENT_POS Atom = 0x%08x", atom_client_pos);
+	coma_log("_COMA_WM_CLIENT_ACT Atom = 0x%08x", atom_client_act);
+	coma_log("_COMA_WM_CLIENT_VISIBLE Atom = 0x%08x", atom_client_visible);
+}
+
+static Atom
+wm_atom(const char *name)
+{
+	Atom	prop;
+
+	if ((prop = XInternAtom(dpy, name, False)) == None)
+		fatal("failed to query Atom '%s'", name);
+
+	return (prop);
 }
 
 static void
@@ -722,6 +771,20 @@ wm_client_list(void)
 
 	if (client == client_active)
 		XSetInputFocus(dpy, focus, RevertToPointerRoot, CurrentTime);
+}
+
+static void
+wm_client_check(Window window)
+{
+	u_int32_t	pid;
+
+	if (coma_wm_property_read(window, atom_net_wm_pid, &pid) == -1) {
+		coma_log("ignoring window 0x%08x", window);
+		return;
+	}
+
+	coma_log("discovered window 0x%08x with pid %u", window, pid);
+	coma_client_create(window);
 }
 
 static void

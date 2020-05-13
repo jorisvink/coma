@@ -22,7 +22,7 @@
 #include "coma.h"
 
 struct client_list	clients;
-static u_int32_t	client_id = 0;
+static u_int32_t	client_id = 1;
 struct client		*client_active = NULL;
 
 void
@@ -37,7 +37,7 @@ coma_client_create(Window window)
 	XWindowAttributes	attr;
 	struct frame		*frame;
 	struct client		*client;
-	u_int32_t		frame_id;
+	u_int32_t		frame_id, pos, visible;
 
 	XGetWindowAttributes(dpy, window, &attr);
 
@@ -48,14 +48,28 @@ coma_client_create(Window window)
 			frame = frame_active;
 	}
 
+	if (coma_wm_property_read(window, atom_client_visible, &visible) == -1)
+		visible = 0;
+
+	if (client_discovery == 0)
+		visible = 1;
+
+	coma_log("window 0x%08x - visible=%d", window, visible);
+
 	client = coma_calloc(1, sizeof(*client));
 	TAILQ_INSERT_TAIL(&clients, client, glist);
+
+	if (coma_wm_property_read(window, atom_client_pos, &pos) == 0)
+		client->pos = pos;
 
 	if (frame->focus != NULL) {
 		TAILQ_INSERT_BEFORE(frame->focus, client, list);
 	} else {
 		TAILQ_INSERT_HEAD(&frame->clients, client, list);
 	}
+
+	if (frame == frame_popup && frame != frame_active)
+		visible = 0;
 
 	if (client_active == NULL)
 		client_active = client;
@@ -71,7 +85,6 @@ coma_client_create(Window window)
 	client->bw = frame_border;
 
 	coma_client_update_title(client);
-	coma_frame_bar_update(client->frame);
 
 	XSelectInput(dpy, client->window,
 	    StructureNotifyMask | PropertyChangeMask | FocusChangeMask);
@@ -81,15 +94,16 @@ coma_client_create(Window window)
 
 	coma_wm_register_prefix(client->window);
 	coma_client_adjust(client);
-	coma_client_map(client);
-	coma_frame_bar_update(frame);
 
-	if (frame == frame_popup && frame != frame_active)
+	if (visible) {
+		coma_client_map(client);
+		coma_client_warp_pointer(client);
+	} else {
 		coma_client_hide(client);
+	}
 
-	XSync(dpy, False);
-
-	coma_client_warp_pointer(client);
+	if (client_discovery == 0)
+		coma_frame_bar_update(frame);
 }
 
 void
@@ -181,6 +195,7 @@ coma_client_map(struct client *client)
 {
 	XMapWindow(dpy, client->window);
 	coma_client_focus(client);
+	coma_wm_property_write(client->window, atom_client_visible, 1);
 }
 
 void
@@ -189,6 +204,7 @@ coma_client_hide(struct client *client)
 	if (!(client->flags & COMA_CLIENT_HIDDEN)) {
 		client->flags |= COMA_CLIENT_HIDDEN;
 		XUnmapWindow(dpy, client->window);
+		coma_wm_property_write(client->window, atom_client_visible, 0);
 	}
 }
 
@@ -232,9 +248,12 @@ coma_client_focus(struct client *client)
 	client_active = client;
 	client->frame->focus = client;
 
-	coma_frame_bar_update(client->frame);
-
-	XSync(dpy, False);
+	if (client_discovery == 0) {
+		coma_frame_bar_update(client->frame);
+		coma_wm_property_write(DefaultRootWindow(dpy),
+		    atom_client_act, client->window);
+		XSync(dpy, True);
+	}
 }
 
 void
