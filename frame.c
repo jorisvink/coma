@@ -30,8 +30,11 @@
 #define CLIENT_MOVE_LEFT		1
 #define CLIENT_MOVE_RIGHT		2
 
+#define LARGE_SINGLE_WINDOW		0
+#define LARGE_DUAL_WINDOWS		1
+
 static void	frame_layout_default(void);
-static void	frame_layout_small_large(void);
+static void	frame_layout_small_large(int);
 static void	frame_bar_sort(struct frame *);
 
 static void		frame_bar_create(struct frame *);
@@ -68,7 +71,10 @@ coma_frame_setup(void)
 		frame_layout_default();
 		break;
 	case COMA_FRAME_LAYOUT_SMALL_LARGE:
-		frame_layout_small_large();
+		frame_layout_small_large(LARGE_SINGLE_WINDOW);
+		break;
+	case COMA_FRAME_LAYOUT_SMALL_DUAL:
+		frame_layout_small_large(LARGE_DUAL_WINDOWS);
 		break;
 	default:
 		fatal("unknown frame layout %d", frame_layout);
@@ -759,7 +765,7 @@ coma_frame_focus(struct frame *frame, int warp)
 }
 
 static void
-frame_layout_small_large(void)
+frame_layout_small_large(int dual)
 {
 	struct frame	*frame;
 	u_int16_t	offset, width;
@@ -784,11 +790,25 @@ frame_layout_small_large(void)
 	TAILQ_INSERT_TAIL(&frames, frame, list);
 	offset += frame_width + frame_gap + (frame_border * 2);
 
-	/* Rest of the screen covered by large frame. */
-	width = screen_width - offset - frame_gap - (frame_border * 2);
+	/* Rest of the screen covered by large/dual frame(s). */
+	if (dual) {
+		width = ((screen_width - offset - frame_gap) / 2) -
+		    frame_border;
+	} else {
+		width = screen_width - offset - frame_gap - (frame_border * 2);
+	}
+
 	frame = frame_create(width, frame_height, offset, frame_y_offset);
 	frame->flags = COMA_FRAME_INLIST;
 	TAILQ_INSERT_TAIL(&frames, frame, list);
+
+	if (dual) {
+		offset += width;
+		frame = frame_create(width, frame_height, offset,
+		    frame_y_offset);
+		frame->flags = COMA_FRAME_INLIST;
+		TAILQ_INSERT_TAIL(&frames, frame, list);
+	}
 
 	/* Popup covers entire screen. */
 	frame_popup = frame_create(screen_width - (frame_border * 2) -
