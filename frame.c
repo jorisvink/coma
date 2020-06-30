@@ -792,7 +792,8 @@ frame_layout_small_large(int dual)
 
 	/* Rest of the screen covered by large/dual frame(s). */
 	if (dual) {
-		width = ((screen_width - offset - frame_gap) / 2);
+		width = ((screen_width - offset - frame_gap) / 2) -
+		    frame_border;
 	} else {
 		width = screen_width - offset - frame_gap - (frame_border * 2);
 	}
@@ -802,7 +803,7 @@ frame_layout_small_large(int dual)
 	TAILQ_INSERT_TAIL(&frames, frame, list);
 
 	if (dual) {
-		offset += width + frame_border;
+		offset += width;
 		frame = frame_create(width, frame_height, offset,
 		    frame_y_offset);
 		frame->flags = COMA_FRAME_INLIST;
