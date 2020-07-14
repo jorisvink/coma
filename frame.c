@@ -707,9 +707,8 @@ frame_layout_default(void)
 		zoom_width += frame_width + frame_gap + (frame_border * 2);
 	}
 
-	if (frame_offset != 0) {
+	if (frame_offset != -1) {
 		width = screen_width / 2;
-
 		if (frame_offset < width) {
 			i = frame_offset;
 			width = screen_width;
@@ -772,7 +771,7 @@ frame_layout_small_large(int dual)
 
 	zoom_width = 0;
 
-	if (frame_offset == 0) {
+	if (frame_offset == -1) {
 		offset = frame_gap;
 		frame_offset = offset;
 	} else {

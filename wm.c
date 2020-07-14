@@ -954,10 +954,10 @@ wm_window_configure(XConfigureRequestEvent *evt)
 		if (evt->value_mask & CWY)
 			client->y = evt->y;
 
-		cfg.x = client->x;
-		cfg.y = client->y;
-		cfg.width = client->w;
-		cfg.height = client->h;
+		cfg.x = client->frame->x;
+		cfg.y = client->frame->y;
+		cfg.width = client->frame->w;
+		cfg.height = client->frame->h;
 		cfg.border_width = client->bw;
 
 		XConfigureWindow(dpy, evt->window, evt->value_mask, &cfg);
