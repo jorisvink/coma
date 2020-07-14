@@ -41,7 +41,8 @@ static void	wm_screen_init(void);
 static void	wm_client_list(void);
 static void	wm_query_atoms(void);
 static Atom	wm_atom(const char *);
-static void	wm_run_command(char *);
+static void	wm_run_command(char *, int);
+static void	wm_run_shell_command(char *);
 static int	wm_input(char *, size_t, void (*autocomplete)(char *, size_t));
 
 static void	wm_client_check(Window);
@@ -100,6 +101,8 @@ struct {
 struct uaction {
 	KeySym			sym;
 	char			*action;
+	int			hold;
+	int			shell;
 	LIST_ENTRY(uaction)	list;
 };
 
@@ -271,7 +274,31 @@ coma_wm_register_action(const char *action, KeySym sym)
 	if (!strncmp(COMA_ACTION_PREFIX, action, COMA_ACTION_PREFIX_LEN)) {
 		ua = coma_calloc(1, sizeof(*ua));
 		ua->sym = sym;
+		ua->hold = 1;
 		ua->action = strdup(action + COMA_ACTION_PREFIX_LEN);
+		if (ua->action == NULL)
+			fatal("strdup");
+		LIST_INSERT_HEAD(&uactions, ua, list);
+		return (0);
+	}
+
+	if (!strncmp(COMA_ACTION_NOHOLD_PREFIX,
+	    action, COMA_ACTION_NOHOLD_PREFIX_LEN)) {
+		ua = coma_calloc(1, sizeof(*ua));
+		ua->sym = sym;
+		ua->action = strdup(action + COMA_ACTION_NOHOLD_PREFIX_LEN);
+		if (ua->action == NULL)
+			fatal("strdup");
+		LIST_INSERT_HEAD(&uactions, ua, list);
+		return (0);
+	}
+
+	if (!strncmp(COMA_ACTION_SHELL_PREFIX,
+	    action, COMA_ACTION_SHELL_PREFIX_LEN)) {
+		ua = coma_calloc(1, sizeof(*ua));
+		ua->sym = sym;
+		ua->shell = 1;
+		ua->action = strdup(action + COMA_ACTION_SHELL_PREFIX_LEN);
 		if (ua->action == NULL)
 			fatal("strdup");
 		LIST_INSERT_HEAD(&uactions, ua, list);
@@ -516,7 +543,7 @@ wm_run(void)
 	if (wm_input(cmd, sizeof(cmd), NULL) == -1)
 		return;
 
-	wm_run_command(cmd);
+	wm_run_command(cmd, 1);
 }
 
 static void
@@ -545,7 +572,7 @@ wm_command(void)
 }
 
 static void
-wm_run_command(char *cmd)
+wm_run_command(char *cmd, int hold)
 {
 	int	off, title, local;
 	char	*argv[COMA_SHELL_ARGV];
@@ -555,7 +582,11 @@ wm_run_command(char *cmd)
 	title = -1;
 
 	argv[off++] = terminal;
-	argv[off++] = "-hold";
+
+	if (hold)
+		argv[off++] = "-hold";
+	else
+		argv[off++] = "+hold";
 
 	if (client_active != NULL && client_active->host != NULL) {
 		if (strcmp(myhost, client_active->host)) {
@@ -589,6 +620,15 @@ wm_run_command(char *cmd)
 
 		coma_execute(argv);
 	}
+}
+
+static void
+wm_run_shell_command(char *cmd)
+{
+	char	*argv[COMA_SHELL_ARGV];
+
+	if (coma_split_arguments(cmd, argv, COMA_SHELL_ARGV))
+		coma_execute(argv);
 }
 
 static int
@@ -849,7 +889,10 @@ wm_handle_prefix(XKeyEvent *prefix)
 	if (actions[i].name == NULL) {
 		LIST_FOREACH(ua, &uactions, list) {
 			if (ua->sym == sym) {
-				wm_run_command(ua->action);
+				if (ua->shell)
+					wm_run_shell_command(ua->action);
+				else
+					wm_run_command(ua->action, ua->hold);
 				break;
 			}
 		}

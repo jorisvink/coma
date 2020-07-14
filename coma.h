@@ -33,8 +33,14 @@
 #define COMA_WM_FONT			"fixed:pixelsize=13:style=bold"
 
 #define COMA_TERMINAL			"xterm"
+
 #define COMA_ACTION_PREFIX		"cmd:"
+#define COMA_ACTION_SHELL_PREFIX	"cmd_shell:"
+#define COMA_ACTION_NOHOLD_PREFIX	"cmd_nohold:"
+
 #define COMA_ACTION_PREFIX_LEN		(sizeof(COMA_ACTION_PREFIX) - 1)
+#define COMA_ACTION_SHELL_PREFIX_LEN	(sizeof(COMA_ACTION_SHELL_PREFIX) - 1)
+#define COMA_ACTION_NOHOLD_PREFIX_LEN	(sizeof(COMA_ACTION_NOHOLD_PREFIX) - 1)
 
 #define COMA_LOG_FILE			".coma.log"
 #define COMA_MOD_KEY			ControlMask
