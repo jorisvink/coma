@@ -724,10 +724,10 @@ frame_layout_default(void)
 		width = screen_width - (frame_gap * 2) - (frame_border * 2);
 	}
 
-	frame_popup = frame_create(width, frame_height, offset, frame_y_offset);
-
 	frame_offset = x;
 	zoom_width -= frame_gap + (frame_border * 2);
+
+	frame_popup = frame_create(zoom_width, frame_height, x, frame_y_offset);
 }
 
 struct frame *
