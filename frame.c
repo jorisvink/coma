@@ -676,7 +676,8 @@ frame_layout_default(void)
 		frame_height = screen_height - (frame_gap * 2) - frame_bar -
 		    (frame_border * 2);
 	} else {
-		frame_y_offset = (screen_height - frame_height) / 2;
+		frame_y_offset = (screen_height -
+		    (frame_bar + frame_height + (frame_border * 2))) / 2;
 	}
 
 	while (width > frame_width) {
