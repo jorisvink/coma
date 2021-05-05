@@ -137,6 +137,9 @@ coma_frame_popup_show(void)
 {
 	struct client	*client, *focus;
 
+	if (frame_active == NULL)
+		return;
+
 	if (frame_active->flags & COMA_FRAME_ZOOMED)
 		return;
 
@@ -170,6 +173,9 @@ coma_frame_next(void)
 {
 	struct frame	*next;
 
+	if (frame_active == NULL)
+		return;
+
 	if (!(frame_active->flags & COMA_FRAME_INLIST) ||
 	    frame_active->flags & COMA_FRAME_ZOOMED)
 		return;
@@ -183,6 +189,9 @@ coma_frame_prev(void)
 {
 	struct frame	*prev;
 
+	if (frame_active == NULL)
+		return;
+
 	if (!(frame_active->flags & COMA_FRAME_INLIST) ||
 	    frame_active->flags & COMA_FRAME_ZOOMED)
 		return;
@@ -195,6 +204,9 @@ void
 coma_frame_client_next(void)
 {
 	struct client	*next;
+
+	if (frame_active == NULL)
+		return;
 
 	if (frame_active->focus == NULL)
 		return;
@@ -214,6 +226,9 @@ void
 coma_frame_client_prev(void)
 {
 	struct client	*prev;
+
+	if (frame_active == NULL)
+		return;
 
 	if (frame_active->focus == NULL)
 		return;
@@ -246,6 +261,9 @@ coma_frame_split(void)
 	struct frame	*frame;
 	struct client	*client;
 	u_int16_t	height, used, y;
+
+	if (frame_active == NULL)
+		return;
 
 	if (frame_active == frame_popup)
 		return;
@@ -291,6 +309,9 @@ coma_frame_merge(void)
 {
 	struct frame	*survives, *dies;
 	struct client	*client, *focus, *next;
+
+	if (frame_active == NULL)
+		return;
 
 	if (frame_active->split == NULL)
 		return;
@@ -342,7 +363,7 @@ coma_frame_merge(void)
 void
 coma_frame_split_next(void)
 {
-	if (frame_active->split == NULL)
+	if (frame_active == NULL || frame_active->split == NULL)
 		return;
 
 	coma_frame_focus(frame_active->split, 1);
@@ -383,21 +404,25 @@ coma_frame_select_id(u_int32_t id)
 		coma_frame_popup_show();
 }
 
-void
-coma_frame_mouseover(u_int16_t x, u_int16_t y)
+int
+coma_frame_mouseover(int x, int y)
 {
 	struct frame		*frame;
 	struct client		*client, *prev;
 
 	if (frame_active == frame_popup)
-		return;
+		return (0);
 
-	if (frame_active->flags & COMA_FRAME_ZOOMED)
-		return;
+	if (frame_active != NULL && frame_active->flags & COMA_FRAME_ZOOMED)
+		return (0);
 
 	frame = NULL;
 	client = NULL;
-	prev = frame_active->focus;
+
+	if (frame_active != NULL)
+		prev = frame_active->focus;
+	else
+		prev = NULL;
 
 	TAILQ_FOREACH(frame, &frames, list) {
 		if (x >= frame->x && x <= frame->x + frame->w &&
@@ -406,7 +431,7 @@ coma_frame_mouseover(u_int16_t x, u_int16_t y)
 	}
 
 	if (frame == NULL)
-		return;
+		return (-1);
 
 	frame_active = frame;
 	if (frame_active->focus != NULL)
@@ -416,6 +441,8 @@ coma_frame_mouseover(u_int16_t x, u_int16_t y)
 
 	if (client != NULL && prev != client)
 		coma_client_focus(client);
+
+	return (0);
 }
 
 struct client *
@@ -435,6 +462,9 @@ void
 coma_frame_zoom(void)
 {
 	struct client		*client;
+
+	if (frame_active == NULL)
+		return;
 
 	if (frame_active->focus == NULL)
 		return;
@@ -640,9 +670,10 @@ coma_frame_update_titles(void)
 	struct frame	*frame;
 	struct client	*client;
 
+	TAILQ_FOREACH(client, &clients, glist)
+		coma_client_update_title(client);
+
 	TAILQ_FOREACH(frame, &frames, list) {
-		TAILQ_FOREACH(client, &frame->clients, list)
-			coma_client_update_title(client);
 		coma_frame_bar_update(frame);
 	}
 
@@ -934,6 +965,9 @@ frame_client_move(int which)
 {
 	struct client	*client;
 	struct frame	*other, *prev;
+
+	if (frame_active == NULL)
+		return;
 
 	if (!(frame_active->flags & COMA_FRAME_INLIST))
 		return;

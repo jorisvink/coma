@@ -25,6 +25,7 @@
 #include <poll.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 #include <unistd.h>
 
 #if defined(__linux__)
@@ -37,6 +38,7 @@ static void	wm_run(void);
 static void	wm_command(void);
 static void	wm_restart(void);
 static void	wm_teardown(void);
+static void	wm_resize_hint(void);
 static void	wm_screen_init(void);
 static void	wm_client_list(void);
 static void	wm_query_atoms(void);
@@ -49,6 +51,7 @@ static void	wm_client_check(Window);
 static void	wm_handle_prefix(XKeyEvent *);
 static void	wm_mouse_click(XButtonEvent *);
 static void	wm_mouse_motion(XMotionEvent *);
+static void	wm_handle_meta_keys(XKeyEvent *);
 
 static void	wm_window_map(XMapRequestEvent *);
 static void	wm_window_destroy(XDestroyWindowEvent *);
@@ -73,12 +76,20 @@ char		*font_name = NULL;
 unsigned int	prefix_mod = COMA_MOD_KEY;
 KeySym		prefix_key = COMA_PREFIX_KEY;
 
+static int	wm_dragging = 0;
+static int	wm_resizing = 0;
 static Window	key_input = None;
 static Window	cmd_input = None;
+static Window	resize_win = None;
 static Window	clients_win = None;
-
 static XftDraw	*cmd_xft = NULL;
 static XftDraw	*clients_xft = NULL;
+
+static struct {
+	int		x;
+	int		y;
+	int		needs_saving;
+} mousepos;
 
 struct {
 	const char	*name;
@@ -117,10 +128,10 @@ struct {
 	{ "frame-next",		XK_l,		coma_frame_next },
 	{ "frame-popup",	XK_space,	coma_frame_popup_toggle },
 
-	{ "frame-zoom",		XK_z,	coma_frame_zoom },
-	{ "frame-split",	XK_s,	coma_frame_split },
-	{ "frame-merge",	XK_m,	coma_frame_merge },
-	{ "frame-split-next",	XK_f,	coma_frame_split_next },
+	{ "frame-zoom",			XK_z,	coma_frame_zoom },
+	{ "frame-split",		XK_s,	coma_frame_split },
+	{ "frame-merge",		XK_m,	coma_frame_merge },
+	{ "frame-split-next",		XK_f,	coma_frame_split_next },
 
 	{ "frame-move-client-left",	XK_i,	coma_frame_client_move_left },
 	{ "frame-move-client-right", 	XK_o,	coma_frame_client_move_right },
@@ -128,6 +139,7 @@ struct {
 	{ "coma-restart",		XK_r,	wm_restart },
 	{ "coma-terminal",		XK_c,	coma_spawn_terminal },
 
+	{ "client-float",		XK_F,	coma_client_float },
 	{ "client-kill",		XK_k,	coma_client_kill_active },
 	{ "client-prev",		XK_p,	coma_frame_client_prev },
 	{ "client-next",		XK_n,	coma_frame_client_next },
@@ -169,10 +181,13 @@ coma_wm_run(void)
 {
 	XEvent			evt;
 	struct pollfd		pfd[1];
+	time_t			now, last;
 	int			running, ret;
 
+	last = 0;
 	running = 1;
 	restart = 0;
+	memset(&mousepos, 0, sizeof(mousepos));
 
 	while (running) {
 		if (sig_recv != -1) {
@@ -204,7 +219,11 @@ coma_wm_run(void)
 			fatal("poll: %s", errno_s);
 		}
 
-		coma_frame_update_titles();
+		time(&now);
+		if ((now - last) >= 1) {
+			last = now;
+			coma_frame_update_titles();
+		}
 
 		if (ret == 0 || !(pfd[0].revents & POLLIN))
 			continue;
@@ -231,11 +250,13 @@ coma_wm_run(void)
 			case KeyPress:
 				wm_handle_prefix(&evt.xkey);
 				break;
+			case KeyRelease:
+				wm_handle_meta_keys(&evt.xkey);
+				break;
 			}
 
 			XSync(dpy, False);
 		}
-
 	}
 
 	wm_teardown();
@@ -263,6 +284,12 @@ coma_wm_register_prefix(Window win)
 
 	c = XKeysymToKeycode(dpy, prefix_key);
 	XGrabKey(dpy, c, prefix_mod, win, True, GrabModeAsync, GrabModeAsync);
+
+	c = XKeysymToKeycode(dpy, XK_Meta_L);
+	XGrabKey(dpy, c, AnyModifier, win, True, GrabModeAsync, GrabModeAsync);
+
+	c = XKeysymToKeycode(dpy, XK_Shift_L);
+	XGrabKey(dpy, c, Mod2Mask, win, True, GrabModeAsync, GrabModeAsync);
 }
 
 int
@@ -504,6 +531,10 @@ wm_screen_init(void)
 		}
 	}
 
+	resize_win = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 2,
+	    border->pixel, BlackPixel(dpy, screen));
+	XMapWindow(dpy, resize_win);
+
 	client_discovery = 0;
 	XSync(dpy, True);
 }
@@ -713,7 +744,7 @@ wm_client_list(void)
 	Window			focus;
 	struct frame		*prev;
 	XftColor		*color;
-	char			c, buf[128];
+	char			c, buf[256];
 	struct client		*client, *cl, *list[16];
 	int			revert, y, idx, len, limit;
 
@@ -858,9 +889,13 @@ wm_handle_prefix(XKeyEvent *prefix)
 	XGetInputFocus(dpy, &focus, &revert);
 
 	sym = XkbKeycodeToKeysym(dpy, prefix->keycode, 0, 0);
+	coma_log("prefix sym is 0x%08x", sym);
 
-	if (sym != prefix_key)
+	if (sym != prefix_key) {
+		if (sym == XK_Meta_L || sym == XK_Shift_L)
+			wm_handle_meta_keys(prefix);
 		return;
+	}
 
 	XSetInputFocus(dpy, key_input, RevertToNone, CurrentTime);
 
@@ -904,6 +939,53 @@ out:
 }
 
 static void
+wm_handle_meta_keys(XKeyEvent *key)
+{
+	KeySym		sym;
+
+	sym = XkbKeycodeToKeysym(dpy, key->keycode, 0, 0);
+
+	switch (sym) {
+	case XK_Meta_L:
+		wm_dragging = !wm_dragging;
+		if (wm_dragging == 0)
+			wm_resizing = 0;
+		if (wm_resizing == 0) {
+			if (client_active != NULL) {
+				coma_client_send_configure(client_active);
+				XMapWindow(dpy, client_active->window);
+			}
+			XUnmapWindow(dpy, resize_win);
+		}
+		mousepos.needs_saving = 1;
+		coma_log("wm_dragging = %d", wm_dragging);
+		break;
+	case XK_Shift_L:
+		if (client_active == NULL ||
+		    !(client_active->flags & COMA_CLIENT_FLOAT))
+			break;
+		wm_resizing = !wm_resizing;
+		if (wm_dragging == 0)
+			wm_resizing = 0;
+		if (wm_resizing == 0) {
+			coma_client_send_configure(client_active);
+			XMapWindow(dpy, client_active->window);
+			XUnmapWindow(dpy, resize_win);
+		} else {
+			XMapWindow(dpy, resize_win);
+			XRaiseWindow(dpy, resize_win);
+			wm_resize_hint();
+			XUnmapWindow(dpy, client_active->window);
+		}
+		mousepos.needs_saving = 1;
+		coma_log("wm_resizing = %d", wm_resizing);
+		break;
+	default:
+		coma_log("%s: 0x%08x", __func__, sym);
+	}
+}
+
+static void
 wm_mouse_click(XButtonEvent *evt)
 {
 	coma_frame_bar_click(evt->window, evt->x);
@@ -912,13 +994,56 @@ wm_mouse_click(XButtonEvent *evt)
 static void
 wm_mouse_motion(XMotionEvent *evt)
 {
+	int			x, y;
 	static Time		last = 0;
+
+	if (mousepos.needs_saving) {
+		mousepos.needs_saving = 0;
+		mousepos.x = evt->x;
+		mousepos.y = evt->y;
+	}
+
+	if (client_active != NULL &&
+	    (client_active->flags & COMA_CLIENT_FLOAT)) {
+		if (wm_resizing) {
+			if ((evt->time - last) <= (1000 / 30))
+				return;
+			last = evt->time;
+			if (evt->x > client_active->x)
+				client_active->w = evt->x - client_active->x;
+			if (evt->y > client_active->y)
+				client_active->h = evt->y - client_active->y;
+			mousepos.x = evt->x;
+			mousepos.y = evt->y;
+			wm_resize_hint();
+			return;
+		}
+
+		if (wm_dragging) {
+			x = evt->x - mousepos.x;
+			y = evt->y - mousepos.y;
+			client_active->x += x;
+			client_active->y += y;
+			mousepos.x = evt->x;
+			mousepos.y = evt->y;
+			coma_client_send_configure(client_active);
+			return;
+		}
+	}
 
 	if ((evt->time - last) <= (1000 / 60))
 		return;
 
 	last = evt->time;
-	coma_frame_mouseover(evt->x, evt->y);
+
+	if (client_active != NULL &&
+	    (client_active->flags & COMA_CLIENT_FLOAT)) {
+		if (coma_client_mouseover(evt->x, evt->y) == -1)
+			coma_frame_mouseover(evt->x, evt->y);
+	} else {
+		if (coma_frame_mouseover(evt->x, evt->y) == -1)
+			coma_client_mouseover(evt->x, evt->y);
+	}
 }
 
 static void
@@ -954,10 +1079,18 @@ wm_window_configure(XConfigureRequestEvent *evt)
 		if (evt->value_mask & CWY)
 			client->y = evt->y;
 
-		cfg.x = client->frame->x;
-		cfg.y = client->frame->y;
-		cfg.width = client->frame->w;
-		cfg.height = client->frame->h;
+		if (!(client->flags & COMA_CLIENT_FLOAT)) {
+			cfg.x = client->frame->x;
+			cfg.y = client->frame->y;
+			cfg.width = client->frame->w;
+			cfg.height = client->frame->h;
+		} else {
+			cfg.x = client->x;
+			cfg.y = client->y;
+			cfg.width = client->w;
+			cfg.height = client->h;
+		}
+
 		cfg.border_width = client->bw;
 
 		XConfigureWindow(dpy, evt->window, evt->value_mask, &cfg);
@@ -972,6 +1105,14 @@ wm_window_configure(XConfigureRequestEvent *evt)
 		cfg.border_width = evt->border_width;
 		XConfigureWindow(dpy, evt->window, evt->value_mask, &cfg);
 	}
+}
+
+static void
+wm_resize_hint(void)
+{
+	XMoveResizeWindow(dpy, resize_win,
+	    client_active->x, client_active->y,
+	    client_active->w, client_active->h);
 }
 
 static int

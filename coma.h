@@ -60,6 +60,7 @@
 struct frame;
 
 #define COMA_CLIENT_HIDDEN	0x0001
+#define COMA_CLIENT_FLOAT	0x0002
 
 struct client {
 	u_int32_t		id;
@@ -76,11 +77,11 @@ struct client {
 	char			*host;
 	char			*status;
 
-	u_int16_t		w;
-	u_int16_t		h;
-	u_int16_t		x;
-	u_int16_t		y;
-	u_int16_t		bw;
+	int32_t			w;
+	int32_t			h;
+	int32_t			x;
+	int32_t			y;
+	int32_t			bw;
 
 	u_int16_t		fbo;
 	u_int16_t		fbw;
@@ -198,17 +199,19 @@ void		coma_frame_bars_create(void);
 void		coma_frame_bars_update(void);
 void		coma_frame_popup_toggle(void);
 void		coma_frame_update_titles(void);
+int		coma_frame_mouseover(int, int);
 void		coma_frame_select_id(u_int32_t);
 void		coma_frame_client_move_left(void);
 void		coma_frame_client_move_right(void);
 void		coma_frame_focus(struct frame *, int);
 void		coma_frame_bar_update(struct frame *);
 void		coma_frame_bar_click(Window, u_int16_t);
-void		coma_frame_mouseover(u_int16_t, u_int16_t);
 
 void		coma_client_init(void);
+void		coma_client_float(void);
 void		coma_client_create(Window);
 void		coma_client_kill_active(void);
+int		coma_client_mouseover(int, int);
 void		coma_client_map(struct client *);
 void		coma_client_hide(struct client *);
 void		coma_client_focus(struct client *);
