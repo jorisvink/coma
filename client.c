@@ -138,12 +138,7 @@ coma_client_float(void)
 	frame->focus = NULL;
 	client_active->frame = NULL;
 
-	client_active->x = 50;
-	client_active->y = 50;
-	client_active->h = 400;
-	client_active->w = COMA_FRAME_WIDTH;
-
-	coma_client_send_configure(client_active);
+	coma_frame_bar_update(frame);
 }
 
 int
