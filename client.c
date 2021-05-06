@@ -118,6 +118,7 @@ coma_client_create(Window window)
 void
 coma_client_float(void)
 {
+	struct client		*prev;
 	struct frame		*frame;
 
 	if (client_active == NULL)
@@ -135,10 +136,63 @@ coma_client_float(void)
 
 	TAILQ_REMOVE(&frame->clients, client_active, list);
 
+	if ((prev = TAILQ_NEXT(frame->focus, list)) == NULL)
+		prev = TAILQ_FIRST(&frame->clients);
+
 	frame->focus = NULL;
 	client_active->frame = NULL;
 
+	if (prev != NULL) {
+		frame->focus = prev;
+		XMapWindow(dpy, prev->window);
+		XRaiseWindow(dpy, prev->window);
+		prev->flags &= ~COMA_CLIENT_HIDDEN;
+		coma_frame_bar_update(frame_active);
+	}
+
+	XRaiseWindow(dpy, client_active->window);
+
+	client_active->h = 360;
+	client_active->w = COMA_FRAME_WIDTH;
+
+	coma_client_send_configure(client_active);
+	coma_client_warp_pointer(client_active);
+}
+
+void
+coma_client_dock(void)
+{
+	struct frame	*frame;
+	u_int32_t	frame_id;
+
+	if (client_active == NULL)
+		return;
+
+	if (!(client_active->flags & COMA_CLIENT_FLOAT))
+		return;
+
+	if (coma_wm_property_read(client_active->window,
+	    atom_frame_id, &frame_id) == -1) {
+		coma_log("will not dock 0x%08x, no frame_id",
+		    client_active->window);
+		return;
+	}
+
+	if ((frame = coma_frame_lookup(frame_id)) == NULL) {
+		coma_log("will not dock 0x%08x, no frame with id %u",
+		    client_active->window, frame_id);
+		return;
+	}
+
+	client_active->flags &= ~COMA_CLIENT_FLOAT;
+	client_active->frame = frame;
+
+	TAILQ_INSERT_HEAD(&frame->clients, client_active, list);
+
+	coma_client_adjust(client_active);
+	coma_client_focus(client_active);
 	coma_frame_bar_update(frame);
+	coma_frame_focus(frame, 1);
 }
 
 int
@@ -160,6 +214,9 @@ coma_client_mouseover(int x, int y)
 
 	frame_active = NULL;
 	coma_client_focus(client);
+
+	TAILQ_REMOVE(&clients, client, glist);
+	TAILQ_INSERT_HEAD(&clients, client, glist);
 
 	return (0);
 }

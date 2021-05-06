@@ -208,6 +208,7 @@ void		coma_frame_bar_update(struct frame *);
 void		coma_frame_bar_click(Window, u_int16_t);
 
 void		coma_client_init(void);
+void		coma_client_dock(void);
 void		coma_client_float(void);
 void		coma_client_create(Window);
 void		coma_client_kill_active(void);

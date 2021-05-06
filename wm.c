@@ -38,6 +38,7 @@ static void	wm_run(void);
 static void	wm_command(void);
 static void	wm_restart(void);
 static void	wm_teardown(void);
+static void	wm_keys_init(void);
 static void	wm_resize_hint(void);
 static void	wm_screen_init(void);
 static void	wm_client_list(void);
@@ -72,6 +73,7 @@ Atom		atom_client_act = None;
 Atom		atom_net_wm_pid = None;
 Atom		atom_client_visible = None;
 
+KeySym		float_key = None;
 char		*font_name = NULL;
 unsigned int	prefix_mod = COMA_MOD_KEY;
 KeySym		prefix_key = COMA_PREFIX_KEY;
@@ -140,6 +142,8 @@ struct {
 	{ "coma-terminal",		XK_c,	coma_spawn_terminal },
 
 	{ "client-float",		XK_F,	coma_client_float },
+	{ "client-dock",		XK_d,	coma_client_dock },
+
 	{ "client-kill",		XK_k,	coma_client_kill_active },
 	{ "client-prev",		XK_p,	coma_frame_client_prev },
 	{ "client-next",		XK_n,	coma_frame_client_next },
@@ -172,6 +176,7 @@ coma_wm_setup(void)
 
 	XSetErrorHandler(wm_error);
 
+	wm_keys_init();
 	wm_query_atoms();
 	wm_screen_init();
 }
@@ -278,18 +283,18 @@ coma_wm_color(const char *name)
 void
 coma_wm_register_prefix(Window win)
 {
-	KeyCode		c;
+	KeyCode			c;
 
 	XUngrabKey(dpy, AnyKey, AnyModifier, win);
 
 	c = XKeysymToKeycode(dpy, prefix_key);
 	XGrabKey(dpy, c, prefix_mod, win, True, GrabModeAsync, GrabModeAsync);
 
-	c = XKeysymToKeycode(dpy, XK_Meta_L);
+	c = XKeysymToKeycode(dpy, float_key);
 	XGrabKey(dpy, c, AnyModifier, win, True, GrabModeAsync, GrabModeAsync);
 
 	c = XKeysymToKeycode(dpy, XK_Shift_L);
-	XGrabKey(dpy, c, Mod2Mask, win, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, c, Mod4Mask, win, True, GrabModeAsync, GrabModeAsync);
 }
 
 int
@@ -446,6 +451,29 @@ wm_teardown(void)
 	XSync(dpy, True);
 	XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
 	XCloseDisplay(dpy);
+}
+
+static void
+wm_keys_init(void)
+{
+	int			i, k;
+	XModifierKeymap		*map;
+
+	if ((map = XGetModifierMapping(dpy)) == NULL)
+		fatal("failed to get modifier map");
+
+	/* Use first key from Mod4Mask. */
+	k = map->max_keypermod * 6;
+	for (i = 0; i < map->max_keypermod; i++) {
+		if (map->modifiermap[k]) {
+			float_key = XkbKeycodeToKeysym(dpy,
+			    map->modifiermap[k], 0, 0);
+			break;
+		}
+		k++;
+	}
+
+	XFreeModifiermap(map);
 }
 
 static void
@@ -889,10 +917,11 @@ wm_handle_prefix(XKeyEvent *prefix)
 	XGetInputFocus(dpy, &focus, &revert);
 
 	sym = XkbKeycodeToKeysym(dpy, prefix->keycode, 0, 0);
-	coma_log("prefix sym is 0x%08x", sym);
+	coma_log("key sym is 0x%08x (state: 0x%08x)", sym, prefix->state);
 
-	if (sym != prefix_key) {
-		if (sym == XK_Meta_L || sym == XK_Shift_L)
+	if (!(prefix->state & prefix_mod) || sym != prefix_key) {
+		if ((prefix->state == 0 && sym == float_key) ||
+		    ((prefix->state & Mod4Mask) && sym == XK_Shift_L))
 			wm_handle_meta_keys(prefix);
 		return;
 	}
@@ -945,8 +974,7 @@ wm_handle_meta_keys(XKeyEvent *key)
 
 	sym = XkbKeycodeToKeysym(dpy, key->keycode, 0, 0);
 
-	switch (sym) {
-	case XK_Meta_L:
+	if (sym == float_key) {
 		wm_dragging = !wm_dragging;
 		if (wm_dragging == 0)
 			wm_resizing = 0;
@@ -959,7 +987,10 @@ wm_handle_meta_keys(XKeyEvent *key)
 		}
 		mousepos.needs_saving = 1;
 		coma_log("wm_dragging = %d", wm_dragging);
-		break;
+		return;
+	}
+
+	switch (sym) {
 	case XK_Shift_L:
 		if (client_active == NULL ||
 		    !(client_active->flags & COMA_CLIENT_FLOAT))
@@ -982,6 +1013,7 @@ wm_handle_meta_keys(XKeyEvent *key)
 		break;
 	default:
 		coma_log("%s: 0x%08x", __func__, sym);
+		break;
 	}
 }
 
