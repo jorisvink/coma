@@ -41,13 +41,6 @@ coma_client_create(Window window)
 
 	XGetWindowAttributes(dpy, window, &attr);
 
-	/*
-	 * If we are coming from a floating client we have no active
-	 * frame and must select one
-	 */
-	if (frame_active == NULL)
-		coma_frame_select_any();
-
 	if (coma_wm_property_read(window, atom_frame_id, &frame_id) == -1) {
 		frame = frame_active;
 	} else {
@@ -93,8 +86,8 @@ coma_client_create(Window window)
 
 	coma_client_update_title(client);
 
-	XSelectInput(dpy, client->window, StructureNotifyMask |
-	    PropertyChangeMask | FocusChangeMask);
+	XSelectInput(dpy, client->window,
+	    StructureNotifyMask | PropertyChangeMask | FocusChangeMask);
 
 	XAddToSaveSet(dpy, client->window);
 	XSetWindowBorderWidth(dpy, client->window, client->bw);
@@ -113,112 +106,6 @@ coma_client_create(Window window)
 		coma_frame_bar_update(frame);
 		XSync(dpy, False);
 	}
-}
-
-void
-coma_client_float(void)
-{
-	struct client		*prev;
-	struct frame		*frame;
-
-	if (client_active == NULL)
-		return;
-
-	if (client_active->flags & COMA_CLIENT_FLOAT)
-		return;
-
-	frame = client_active->frame;
-	if (frame->focus == NULL || frame->focus->id != client_active->id)
-		return;
-
-	client_active->flags |= COMA_CLIENT_FLOAT;
-	coma_frame_bar_update(frame);
-
-	TAILQ_REMOVE(&frame->clients, client_active, list);
-
-	if ((prev = TAILQ_NEXT(frame->focus, list)) == NULL)
-		prev = TAILQ_FIRST(&frame->clients);
-
-	frame->focus = NULL;
-	client_active->frame = NULL;
-
-	if (prev != NULL) {
-		frame->focus = prev;
-		XMapWindow(dpy, prev->window);
-		XRaiseWindow(dpy, prev->window);
-		prev->flags &= ~COMA_CLIENT_HIDDEN;
-		coma_frame_bar_update(frame_active);
-	}
-
-	XRaiseWindow(dpy, client_active->window);
-
-	client_active->h = 360;
-	client_active->w = COMA_FRAME_WIDTH;
-
-	coma_client_send_configure(client_active);
-	coma_client_warp_pointer(client_active);
-}
-
-void
-coma_client_dock(void)
-{
-	struct frame	*frame;
-	u_int32_t	frame_id;
-
-	if (client_active == NULL)
-		return;
-
-	if (!(client_active->flags & COMA_CLIENT_FLOAT))
-		return;
-
-	if (coma_wm_property_read(client_active->window,
-	    atom_frame_id, &frame_id) == -1) {
-		coma_log("will not dock 0x%08x, no frame_id",
-		    client_active->window);
-		return;
-	}
-
-	if ((frame = coma_frame_lookup(frame_id)) == NULL) {
-		coma_log("will not dock 0x%08x, no frame with id %u",
-		    client_active->window, frame_id);
-		return;
-	}
-
-	client_active->flags &= ~COMA_CLIENT_FLOAT;
-	client_active->frame = frame;
-
-	TAILQ_INSERT_HEAD(&frame->clients, client_active, list);
-
-	coma_client_adjust(client_active);
-	coma_client_focus(client_active);
-	coma_frame_bar_update(frame);
-	coma_frame_focus(frame, 1);
-}
-
-int
-coma_client_mouseover(int x, int y)
-{
-	struct client		*client;
-
-	TAILQ_FOREACH(client, &clients, glist) {
-		if (!(client->flags & COMA_CLIENT_FLOAT))
-			continue;
-
-		if (x >= client->x && x <= client->x + client->w &&
-		    y >= client->y && y <= client->y + client->h)
-			break;
-	}
-
-	if (client == NULL)
-		return (-1);
-
-	frame_active = NULL;
-	coma_client_focus(client);
-
-	TAILQ_REMOVE(&clients, client, glist);
-	TAILQ_INSERT_HEAD(&clients, client, glist);
-
-	return (0);
 }
 
 void
@@ -252,25 +139,19 @@ coma_client_destroy(struct client *client)
 		was_active = 0;
 	}
 
-	if (frame != NULL) {
-		if (frame->focus != NULL && frame->focus->id == client->id)
-			frame->focus = NULL;
+	if (frame->focus != NULL && frame->focus->id == client->id)
+		frame->focus = NULL;
 
-		next = TAILQ_NEXT(client, list);
-		TAILQ_REMOVE(&frame->clients, client, list);
-	} else {
-		next = NULL;
-	}
-
+	next = TAILQ_NEXT(client, list);
 	TAILQ_REMOVE(&clients, client, glist);
+	TAILQ_REMOVE(&frame->clients, client, list);
 
 	if (client->status)
 		free(client->status);
 
 	free(client);
 
-	if (frame)
-		coma_frame_bar_update(frame);
+	coma_frame_bar_update(frame);
 
 	if (was_active == 0)
 		return;
@@ -282,7 +163,7 @@ coma_client_destroy(struct client *client)
 		}
 	}
 
-	if (next == NULL && frame != NULL) {
+	if (next == NULL) {
 		if ((next = TAILQ_FIRST(&frame->clients)) == NULL) {
 			if (frame->split != NULL)
 				coma_frame_merge();
@@ -367,16 +248,13 @@ coma_client_focus(struct client *client)
 	}
 
 	client_active = client;
+	client->frame->focus = client;
 
-	if (!(client->flags & COMA_CLIENT_FLOAT)) {
-		client->frame->focus = client;
-
-		if (client_discovery == 0) {
-			coma_frame_bar_update(client->frame);
-			coma_wm_property_write(DefaultRootWindow(dpy),
-			    atom_client_act, client->window);
-			XSync(dpy, True);
-		}
+	if (client_discovery == 0) {
+		coma_frame_bar_update(client->frame);
+		coma_wm_property_write(DefaultRootWindow(dpy),
+		    atom_client_act, client->window);
+		XSync(dpy, True);
 	}
 }
 

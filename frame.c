@@ -137,9 +137,6 @@ coma_frame_popup_show(void)
 {
 	struct client	*client, *focus;
 
-	if (frame_active == NULL)
-		return;
-
 	if (frame_active->flags & COMA_FRAME_ZOOMED)
 		return;
 
@@ -173,9 +170,6 @@ coma_frame_next(void)
 {
 	struct frame	*next;
 
-	if (frame_active == NULL)
-		return;
-
 	if (!(frame_active->flags & COMA_FRAME_INLIST) ||
 	    frame_active->flags & COMA_FRAME_ZOOMED)
 		return;
@@ -189,9 +183,6 @@ coma_frame_prev(void)
 {
 	struct frame	*prev;
 
-	if (frame_active == NULL)
-		return;
-
 	if (!(frame_active->flags & COMA_FRAME_INLIST) ||
 	    frame_active->flags & COMA_FRAME_ZOOMED)
 		return;
@@ -204,9 +195,6 @@ void
 coma_frame_client_next(void)
 {
 	struct client	*next;
-
-	if (frame_active == NULL)
-		return;
 
 	if (frame_active->focus == NULL)
 		return;
@@ -226,9 +214,6 @@ void
 coma_frame_client_prev(void)
 {
 	struct client	*prev;
-
-	if (frame_active == NULL)
-		return;
 
 	if (frame_active->focus == NULL)
 		return;
@@ -261,9 +246,6 @@ coma_frame_split(void)
 	struct frame	*frame;
 	struct client	*client;
 	u_int16_t	height, used, y;
-
-	if (frame_active == NULL)
-		return;
 
 	if (frame_active == frame_popup)
 		return;
@@ -309,9 +291,6 @@ coma_frame_merge(void)
 {
 	struct frame	*survives, *dies;
 	struct client	*client, *focus, *next;
-
-	if (frame_active == NULL)
-		return;
 
 	if (frame_active->split == NULL)
 		return;
@@ -363,7 +342,7 @@ coma_frame_merge(void)
 void
 coma_frame_split_next(void)
 {
-	if (frame_active == NULL || frame_active->split == NULL)
+	if (frame_active->split == NULL)
 		return;
 
 	coma_frame_focus(frame_active->split, 1);
@@ -404,25 +383,22 @@ coma_frame_select_id(u_int32_t id)
 		coma_frame_popup_show();
 }
 
-int
-coma_frame_mouseover(int x, int y)
+void
+coma_frame_mouseover(u_int16_t x, u_int16_t y)
 {
-	struct frame		*frame;
 	struct client		*client, *prev;
+	struct frame		*frame, *prev_frame;
 
 	if (frame_active == frame_popup)
-		return (0);
+		return;
 
-	if (frame_active != NULL && frame_active->flags & COMA_FRAME_ZOOMED)
-		return (0);
+	if (frame_active->flags & COMA_FRAME_ZOOMED)
+		return;
 
 	frame = NULL;
 	client = NULL;
-
-	if (frame_active != NULL)
-		prev = frame_active->focus;
-	else
-		prev = NULL;
+	prev_frame = frame_active;
+	prev = frame_active->focus;
 
 	TAILQ_FOREACH(frame, &frames, list) {
 		if (x >= frame->x && x <= frame->x + frame->w &&
@@ -431,7 +407,7 @@ coma_frame_mouseover(int x, int y)
 	}
 
 	if (frame == NULL)
-		return (-1);
+		return;
 
 	frame_active = frame;
 	if (frame_active->focus != NULL)
@@ -442,7 +418,10 @@ coma_frame_mouseover(int x, int y)
 	if (client != NULL && prev != client)
 		coma_client_focus(client);
 
-	return (0);
+	if (prev_frame)
+		coma_frame_bar_update(prev_frame);
+
+	coma_frame_bar_update(frame_active);
 }
 
 struct client *
@@ -462,9 +441,6 @@ void
 coma_frame_zoom(void)
 {
 	struct client		*client;
-
-	if (frame_active == NULL)
-		return;
 
 	if (frame_active->focus == NULL)
 		return;
@@ -544,6 +520,7 @@ coma_frame_bar_update(struct frame *frame)
 	struct client		*client;
 	int			len, idx;
 	char			buf[64], status[256];
+	XftColor		*bar_active, *bar_inactive;
 	XftColor		*active, *inactive, *color, *dir;
 
 	/* Can be called before bars are setup. */
@@ -567,6 +544,14 @@ coma_frame_bar_update(struct frame *frame)
 	dir = coma_wm_color("frame-bar-directory");
 	active = coma_wm_color("frame-bar-client-active");
 	inactive = coma_wm_color("frame-bar-client-inactive");
+
+	bar_active = coma_wm_color("frame-bar");
+	bar_inactive = coma_wm_color("frame-bar-inactive");
+
+	if (frame_active == frame)
+		XSetWindowBackground(dpy, frame->bar, bar_active->pixel);
+	else
+		XSetWindowBackground(dpy, frame->bar, bar_inactive->pixel);
 
 	XClearWindow(dpy, frame->bar);
 
@@ -670,10 +655,9 @@ coma_frame_update_titles(void)
 	struct frame	*frame;
 	struct client	*client;
 
-	TAILQ_FOREACH(client, &clients, glist)
-		coma_client_update_title(client);
-
 	TAILQ_FOREACH(frame, &frames, list) {
+		TAILQ_FOREACH(client, &frame->clients, list)
+			coma_client_update_title(client);
 		coma_frame_bar_update(frame);
 	}
 
@@ -781,8 +765,10 @@ coma_frame_lookup(u_int32_t id)
 void
 coma_frame_focus(struct frame *frame, int warp)
 {
+	struct frame		*prev;
 	struct client		*client;
 
+	prev = frame_active;
 	frame_active = frame;
 
 	if ((client = frame->focus) == NULL)
@@ -793,6 +779,9 @@ coma_frame_focus(struct frame *frame, int warp)
 		if (warp)
 			coma_client_warp_pointer(client);
 	}
+
+	coma_frame_bar_update(prev);
+	coma_frame_bar_update(frame_active);
 }
 
 static void
@@ -965,9 +954,6 @@ frame_client_move(int which)
 {
 	struct client	*client;
 	struct frame	*other, *prev;
-
-	if (frame_active == NULL)
-		return;
 
 	if (!(frame_active->flags & COMA_FRAME_INLIST))
 		return;

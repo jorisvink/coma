@@ -108,12 +108,7 @@ prefix-m     = merge frame back together
 
 prefix-f     = toggle focus between split frames
 
-prefix-F     = convert client into floating client
-
 prefix-z     = zoom/unzoom current frame to cover all frames
-
-Mod2         = Move floating windows
-Mod2-shift   = Resize floating windows
 
 Screenshots
 -----------
