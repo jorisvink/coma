@@ -548,10 +548,13 @@ coma_frame_bar_update(struct frame *frame)
 	bar_active = coma_wm_color("frame-bar");
 	bar_inactive = coma_wm_color("frame-bar-inactive");
 
-	if (frame_active == frame)
+	if (frame_active == frame) {
 		XSetWindowBackground(dpy, frame->bar, bar_active->pixel);
-	else
+	} else {
+		dir = inactive;
+		active = inactive;
 		XSetWindowBackground(dpy, frame->bar, bar_inactive->pixel);
+	}
 
 	XClearWindow(dpy, frame->bar);
 
