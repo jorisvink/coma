@@ -38,6 +38,7 @@ volatile sig_atomic_t	sig_recv = -1;
 char			*terminal = NULL;
 
 static FILE		*logfp = NULL;
+static char		**cargv = NULL;
 
 static void
 usage(void)
@@ -58,10 +59,11 @@ main(int argc, char *argv[])
 	int			ch;
 	struct passwd		*pw;
 	const char		*config;
-	char			**cargv;
+	char			*layout;
 
-	config = NULL;
 	cargv = argv;
+	layout = NULL;
+	config = NULL;
 
 	if ((pw = getpwuid(getuid())) != NULL) {
 		if (chdir(pw->pw_dir) == -1)
@@ -71,10 +73,13 @@ main(int argc, char *argv[])
 	coma_log_init();
 	coma_wm_init();
 
-	while ((ch = getopt(argc, argv, "c:h")) != -1) {
+	while ((ch = getopt(argc, argv, "c:hl:")) != -1) {
 		switch (ch) {
 		case 'c':
 			config = optarg;
+			break;
+		case 'l':
+			layout = optarg;
 			break;
 		case 'h':
 		default:
@@ -87,6 +92,9 @@ main(int argc, char *argv[])
 		fatal("strdup");
 
 	coma_config_parse(config);
+
+	if (layout != NULL)
+		coma_frame_layout(layout);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = coma_signal;
@@ -300,6 +308,12 @@ coma_log(const char *fmt, ...)
 
 	fprintf(logfp, "\n");
 	fflush(logfp);
+}
+
+char *
+coma_program_path(void)
+{
+	return (cargv[0]);
 }
 
 void

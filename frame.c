@@ -80,7 +80,24 @@ coma_frame_setup(void)
 		fatal("unknown frame layout %d", frame_layout);
 	}
 
+	frame_popup->id = UINT_MAX;
 	frame_active = TAILQ_FIRST(&frames);
+
+	coma_log("frame active is %u", frame_active->id);
+}
+
+void
+coma_frame_layout(const char *mode)
+{
+	if (!strcmp(mode, "default")) {
+		frame_layout = COMA_FRAME_LAYOUT_DEFAULT;
+	} else if (!strcmp(mode, "small-large")) {
+		frame_layout = COMA_FRAME_LAYOUT_SMALL_LARGE;
+	} else if (!strcmp(mode, "small-dual")) {
+		frame_layout = COMA_FRAME_LAYOUT_SMALL_DUAL;
+	} else {
+		fatal("unknown frame-layout '%s'", mode);
+	}
 }
 
 void

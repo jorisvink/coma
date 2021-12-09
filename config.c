@@ -306,13 +306,7 @@ config_frame_border(int argc, char **argv)
 static void
 config_frame_layout(int argc, char **argv)
 {
-	if (!strcmp(argv[1], "small-large")) {
-		frame_layout = COMA_FRAME_LAYOUT_SMALL_LARGE;
-	} else if (!strcmp(argv[1], "small-dual")) {
-		frame_layout = COMA_FRAME_LAYOUT_SMALL_DUAL;
-	} else {
-		fatal("unknown frame-layout '%s'", argv[1]);
-	}
+	coma_frame_layout(argv[1]);
 }
 
 static char *

@@ -39,6 +39,7 @@ static void	wm_restart(void);
 static void	wm_teardown(void);
 static void	wm_screen_init(void);
 static void	wm_client_list(void);
+static void	wm_layout_swap(void);
 static void	wm_query_atoms(void);
 static Atom	wm_atom(const char *);
 static void	wm_run_command(char *, int);
@@ -122,6 +123,7 @@ struct {
 	{ "frame-split",	XK_s,	coma_frame_split },
 	{ "frame-merge",	XK_m,	coma_frame_merge },
 	{ "frame-split-next",	XK_f,	coma_frame_split_next },
+	{ "frame-layout-swap",	XK_w,	wm_layout_swap },
 
 	{ "frame-move-client-left",	XK_i,	coma_frame_client_move_left },
 	{ "frame-move-client-right", 	XK_o,	coma_frame_client_move_right },
@@ -350,7 +352,7 @@ coma_wm_property_write(Window win, Atom prop, u_int32_t value)
 	(void)XChangeProperty(dpy, win, prop, XA_INTEGER, 32,
 	    PropModeReplace, (unsigned char *)&value, 1);
 
-	coma_log("win 0x%08x prop 0x%08x = %u", win, prop, value);
+	coma_log(">>> win 0x%08x prop 0x%08x = %u", win, prop, value);
 }
 
 int
@@ -366,18 +368,18 @@ coma_wm_property_read(Window win, Atom prop, u_int32_t *val)
 	    &type, &format, &nitems, &bytes, &data);
 
 	if (ret != Success) {
-		coma_log("prop=0x%08x win=0x%08x bad prop", prop, win);
+		coma_log("! prop=0x%08x win=0x%08x bad prop", prop, win);
 		return (-1);
 	}
 
 	if (type != XA_INTEGER && type != XA_CARDINAL) {
-		coma_log("prop=0x%08x win=0x%08x type=0x%08x bad type",
+		coma_log("! prop=0x%08x win=0x%08x type=0x%08x bad type",
 		    prop, win, type);
 		return (-1);
 	}
 
 	if (nitems != 1) {
-		coma_log("prop=0x%08x win=0x%08x bad nitems %d",
+		coma_log("! prop=0x%08x win=0x%08x bad nitems %d",
 		    prop, win, nitems);
 		return (-1);
 	}
@@ -442,8 +444,12 @@ wm_screen_init(void)
 	screen_width = DisplayWidth(dpy, screen);
 	screen_height = DisplayHeight(dpy, screen);
 
-	if ((font = XftFontOpenName(dpy, screen, font_name)) == NULL)
-		fatal("failed to open %s", font_name);
+	if ((font = XftFontOpenName(dpy, screen, font_name)) == NULL) {
+		coma_log("failed to open %s, falling back to default",
+		    font_name);
+		if ((font = XftFontOpenName(dpy, screen, COMA_WM_FONT)) == NULL)
+			fatal("failed to open %s", COMA_WM_FONT);
+	}
 
 	for (idx = 0; xft_colors[idx].name != NULL; idx++) {
 		if (xft_colors[idx].allocated == 0) {
@@ -815,6 +821,50 @@ wm_client_list(void)
 
 	if (client == client_active)
 		XSetInputFocus(dpy, focus, RevertToPointerRoot, CurrentTime);
+}
+
+static void
+wm_layout_swap(void)
+{
+	XEvent		evt;
+	KeySym		sym;
+	char		*argv[4], *layout;
+
+	for (;;) {
+		XMaskEvent(dpy, KeyPressMask, &evt);
+
+		if (evt.type != KeyPress)
+			continue;
+
+		sym = XkbKeycodeToKeysym(dpy, evt.xkey.keycode, 0,
+		    (evt.xkey.state & ShiftMask));
+
+		if (sym == XK_Escape)
+			break;
+
+		switch (sym) {
+		case XK_1:
+			layout = "default";
+			break;
+		case XK_2:
+			layout = "small-large";
+			break;
+		case XK_3:
+			layout = "small-dual";
+			break;
+		default:
+			return;
+		}
+
+		coma_log("swapping to layout *%s'", layout);
+		argv[0] = coma_program_path();
+		argv[1] = "-l";
+		argv[2] = layout;
+		argv[3] = NULL;
+
+		execvp(argv[0], argv);
+		fatal("failed to execute %s: %s", argv[0], errno_s);
+	}
 }
 
 static void

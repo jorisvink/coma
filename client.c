@@ -42,6 +42,7 @@ coma_client_create(Window window)
 	XGetWindowAttributes(dpy, window, &attr);
 
 	if (coma_wm_property_read(window, atom_frame_id, &frame_id) == -1) {
+		frame_id = 0;
 		frame = frame_active;
 	} else {
 		if ((frame = coma_frame_lookup(frame_id)) == NULL)
@@ -54,7 +55,8 @@ coma_client_create(Window window)
 	if (client_discovery == 0)
 		visible = 1;
 
-	coma_log("window 0x%08x - visible=%d", window, visible);
+	coma_log("window 0x%08x - visible=%d - frame:%u",
+	    window, visible, frame_id);
 
 	client = coma_calloc(1, sizeof(*client));
 	TAILQ_INSERT_TAIL(&clients, client, glist);
