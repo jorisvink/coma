@@ -902,6 +902,7 @@ wm_handle_prefix(XKeyEvent *prefix)
 	struct uaction		*ua;
 	KeySym			sym;
 	Window			focus;
+	struct frame		*frame;
 	struct client		*client;
 	int			revert, i;
 
@@ -926,6 +927,15 @@ wm_handle_prefix(XKeyEvent *prefix)
 
 		if (sym == XK_Shift_L || sym == XK_Shift_R)
 			continue;
+
+		if (sym >= XK_0 && sym <= XK_9) {
+			sym -= XK_0;
+			frame = coma_frame_lookup(sym);
+			if (frame != NULL) {
+				coma_frame_focus(frame, 1);
+				goto out;
+			}
+		}
 
 		break;
 	}
