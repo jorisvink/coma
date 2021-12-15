@@ -492,9 +492,16 @@ wm_screen_init(void)
 	if ((cmd_xft = XftDrawCreate(dpy, cmd_input, visual, colormap)) == NULL)
 		fatal("XftDrawCreate failed");
 
-	clients_win = XCreateSimpleWindow(dpy, root,
-	    (screen_width / 2) - 220, (screen_height / 2) - 205, 400, 400, 2,
-	    border->pixel, bg->pixel);
+	if (frame_offset == -1) {
+		clients_win = XCreateSimpleWindow(dpy, root,
+		    (screen_width / 2) - 220, (screen_height / 2) - 205,
+		    400, 400, 2, border->pixel, bg->pixel);
+	} else {
+		clients_win = XCreateSimpleWindow(dpy, root,
+		    frame_offset + ((screen_width - frame_offset) / 2) - 220,
+		    (screen_height / 2) - 205,
+		    400, 400, 2, border->pixel, bg->pixel);
+	}
 
 	if ((clients_xft = XftDrawCreate(dpy,
 	    clients_win, visual, colormap)) == NULL)
