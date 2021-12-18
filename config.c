@@ -41,6 +41,7 @@ static void	config_frame_height(int, char **);
 static void	config_frame_offset(int, char **);
 static void	config_frame_border(int, char **);
 static void	config_frame_layout(int, char **);
+static void	config_frame_create(int, char **);
 
 static void		config_parse(const char *);
 static void		config_fatal(const char *, const char *, ...);
@@ -68,6 +69,7 @@ struct {
 	{ "frame-offset",		1,	config_frame_offset },
 	{ "frame-border",		1,	config_frame_border },
 	{ "frame-layout",		1,	config_frame_layout },
+	{ "frame-create",		4,	config_frame_create },
 
 	{ NULL, 0, NULL }
 };
@@ -113,13 +115,13 @@ config_parse(const char *path)
 {
 	FILE		*fp;
 	int		i, argc;
-	char		*line, buf[128], *argv[5];
+	char		*line, buf[128], *argv[16];
 
 	if ((fp = fopen(path, "r")) == NULL)
 		return;
 
 	while ((line = config_read_line(fp, buf, sizeof(buf))) != NULL) {
-		argc = coma_split_string(line, " ", argv, 5);
+		argc = coma_split_string(line, " ", argv, 16);
 
 		if (argc < 2) {
 			config_line++;
@@ -128,6 +130,7 @@ config_parse(const char *path)
 
 		for (i = 0; keywords[i].name != NULL; i++) {
 			if (!strcmp(argv[0], keywords[i].name)) {
+				coma_log("got '%s' with %d", argv[0], argc - 1);
 				if (argc - 1 != keywords[i].args) {
 					config_fatal(argv[0],
 					    "requires %d args, got %d",
@@ -307,6 +310,21 @@ static void
 config_frame_layout(int argc, char **argv)
 {
 	coma_frame_layout(argv[1]);
+}
+
+static void
+config_frame_create(int argc, char **argv)
+{
+	struct frame	*frame;
+	u_int16_t	x, y, w, h;
+
+	x = config_strtonum(argv[0], argv[1], 10, 0, USHRT_MAX);
+	y = config_strtonum(argv[0], argv[2], 10, 0, USHRT_MAX);
+	w = config_strtonum(argv[0], argv[3], 10, 0, USHRT_MAX);
+	h = config_strtonum(argv[0], argv[4], 10, 0, USHRT_MAX);
+
+	frame = coma_frame_create(w, h, x, y);
+	coma_frame_register(frame);
 }
 
 static char *

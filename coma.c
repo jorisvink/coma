@@ -91,6 +91,7 @@ main(int argc, char *argv[])
 	if ((terminal = strdup(COMA_TERMINAL)) == NULL)
 		fatal("strdup");
 
+	coma_frame_init();
 	coma_config_parse(config);
 
 	if (layout != NULL)

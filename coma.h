@@ -181,6 +181,7 @@ int		coma_wm_register_color(const char *, const char *);
 
 struct frame	*coma_frame_lookup(u_int32_t);
 
+void		coma_frame_init(void);
 void		coma_frame_prev(void);
 void		coma_frame_next(void);
 void		coma_frame_zoom(void);
@@ -203,10 +204,12 @@ void		coma_frame_layout(const char *);
 void		coma_frame_select_id(u_int32_t);
 void		coma_frame_client_move_left(void);
 void		coma_frame_client_move_right(void);
+void		coma_frame_register(struct frame *);
 void		coma_frame_focus(struct frame *, int);
 void		coma_frame_bar_update(struct frame *);
 void		coma_frame_bar_click(Window, u_int16_t);
 void		coma_frame_mouseover(u_int16_t, u_int16_t);
+struct frame	*coma_frame_create(u_int16_t, u_int16_t, u_int16_t, u_int16_t);
 
 void		coma_client_init(void);
 void		coma_client_create(Window);
