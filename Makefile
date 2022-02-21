@@ -2,6 +2,7 @@
 
 CC?=cc
 COMA=coma
+DESTDIR?=
 PREFIX?=/usr/local
 INSTALL_DIR=$(PREFIX)/bin
 MAN_DIR?=$(PREFIX)/share/man
@@ -27,9 +28,11 @@ LDFLAGS+=`pkg-config --libs x11 xft`
 all: $(COMA)
 
 install: $(COMA)
-	install -m 555 $(COMA) $(INSTALL_DIR)/$(COMA)
-	install -m 555 scripts/coma-* $(INSTALL_DIR)
-	install -m 644 coma.1 $(MAN_DIR)/man1/coma.1
+	mkdir -p $(DESTDIR)$(INSTALL_DIR)
+	mkdir -p $(DESTDIR)$(MAN_DIR)/man1
+	install -m 555 $(COMA) $(DESTDIR)$(INSTALL_DIR)/$(COMA)
+	install -m 555 scripts/coma-* $(DESTDIR)$(INSTALL_DIR)
+	install -m 644 coma.1 $(DESTDIR)$(MAN_DIR)/man1/coma.1
 
 $(COMA): $(OBJS)
 	$(CC) $(OBJS) $(LDFLAGS) -o $(COMA)
