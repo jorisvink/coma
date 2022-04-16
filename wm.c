@@ -1029,6 +1029,7 @@ wm_window_configure(XConfigureRequestEvent *evt)
 		cfg.border_width = client->bw;
 
 		XConfigureWindow(dpy, evt->window, evt->value_mask, &cfg);
+		coma_client_adjust(client);
 		coma_client_send_configure(client);
 	} else {
 		cfg.x = evt->x;
