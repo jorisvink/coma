@@ -567,10 +567,14 @@ coma_frame_bar_update(struct frame *frame)
 	bar_inactive = coma_wm_color("frame-bar-inactive");
 
 	if (frame_active == frame) {
+		color = coma_wm_color("client-active");
+		XSetWindowBorder(dpy, frame->bar, color->pixel);
 		XSetWindowBackground(dpy, frame->bar, bar_active->pixel);
 	} else {
 		dir = inactive;
 		active = inactive;
+		color = coma_wm_color("client-inactive");
+		XSetWindowBorder(dpy, frame->bar, color->pixel);
 		XSetWindowBackground(dpy, frame->bar, bar_inactive->pixel);
 	}
 
@@ -906,8 +910,10 @@ frame_bar_create(struct frame *frame)
 	color = coma_wm_color("frame-bar");
 
 	frame->bar = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy),
-	    frame->x, y_offset, frame->w + frame_border * 2,
+	    frame->x, y_offset + (frame_gap / 2), frame->w,
 	    frame_bar, 0, WhitePixel(dpy, frame->screen), color->pixel);
+
+	XSetWindowBorderWidth(dpy, frame->bar, frame_border);
 
 	XSelectInput(dpy, frame->bar, ButtonReleaseMask);
 
