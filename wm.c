@@ -442,7 +442,9 @@ wm_screen_init(void)
 	visual = DefaultVisual(dpy, screen);
 	colormap = DefaultColormap(dpy, screen);
 	screen_width = DisplayWidth(dpy, screen);
-	screen_height = DisplayHeight(dpy, screen);
+
+	if (screen_height == 0)
+		screen_height = DisplayHeight(dpy, screen);
 
 	if ((font = XftFontOpenName(dpy, screen, font_name)) == NULL) {
 		coma_log("failed to open %s, falling back to default",

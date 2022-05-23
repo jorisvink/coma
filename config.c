@@ -32,6 +32,7 @@ static void	config_font(int, char **);
 static void	config_color(int, char **);
 static void	config_prefix(int, char **);
 static void	config_terminal(int, char **);
+static void	config_screen_height(int, char **);
 
 static void	config_frame_gap(int, char **);
 static void	config_frame_bar(int, char **);
@@ -60,6 +61,7 @@ struct {
 	{ "color",			2,	config_color },
 	{ "prefix",			1,	config_prefix },
 	{ "terminal",			1,	config_terminal },
+	{ "screen-height",		1,	config_screen_height },
 
 	{ "frame-gap",			1,	config_frame_gap },
 	{ "frame-bar",			1,	config_frame_bar },
@@ -262,6 +264,12 @@ config_terminal(int argc, char **argv)
 
 	if ((terminal = strdup(argv[1])) == NULL)
 		fatal("strdup");
+}
+
+static void
+config_screen_height(int argc, char **argv)
+{
+	screen_height = config_strtonum(argv[0], argv[1], 10, 1, USHRT_MAX);
 }
 
 static void
