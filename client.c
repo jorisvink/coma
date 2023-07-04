@@ -287,12 +287,13 @@ coma_client_send_configure(struct client *client)
 void
 coma_client_update_title(struct client *client)
 {
-	int		n;
-	char		*name, *args[4];
+	int		n, len;
+	char		*name, *args[4], pwd[PATH_MAX];
 
 	if (!XFetchName(dpy, client->window, &name))
 		return;
 
+	free(client->pwd);
 	free(client->status);
 
 	client->pwd = NULL;
@@ -307,8 +308,19 @@ coma_client_update_title(struct client *client)
 		return;
 	}
 
+	if (args[1] != NULL && !strncmp(args[1], homedir, strlen(homedir))) {
+		len = snprintf(pwd, sizeof(pwd), "~%s",
+		    args[1] + strlen(homedir));
+		if (len != -1 && (size_t)len < sizeof(pwd))
+			client->pwd = strdup(pwd);
+	}
+
+	if (client->pwd == NULL) {
+		if ((client->pwd = strdup(args[1])) == NULL)
+			fatal("strdup failed");
+	}
+
 	client->host = args[0];
-	client->pwd = args[1];
 
 	if (n == 3)
 		client->cmd = args[2];

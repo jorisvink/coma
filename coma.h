@@ -127,6 +127,7 @@ extern Display			*dpy;
 extern XftFont			*font;
 extern struct client_list	clients;
 extern int			restart;
+extern char			*homedir;
 extern char			myhost[256];
 extern unsigned int		prefix_mod;
 extern KeySym			prefix_key;

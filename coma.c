@@ -35,6 +35,7 @@ static void	coma_log_init(void);
 char			myhost[256];
 int			restart = 0;
 volatile sig_atomic_t	sig_recv = -1;
+char			*homedir = NULL;
 char			*terminal = NULL;
 
 static FILE		*logfp = NULL;
@@ -65,10 +66,14 @@ main(int argc, char *argv[])
 	layout = NULL;
 	config = NULL;
 
-	if ((pw = getpwuid(getuid())) != NULL) {
-		if (chdir(pw->pw_dir) == -1)
-			fatal("chdir(%s): %s", pw->pw_dir, errno_s);
-	}
+	if ((pw = getpwuid(getuid())) == NULL)
+		fatal("who are you?");
+
+	if ((homedir = strdup(pw->pw_dir)) == NULL)
+		fatal("strdup failed");
+
+	if (chdir(homedir) == -1)
+		fatal("chdir(%s): %s", homedir, errno_s);
 
 	coma_log_init();
 	coma_wm_init();
