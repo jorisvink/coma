@@ -87,13 +87,13 @@ struct {
 	int		allocated;
 	XftColor	color;
 } xft_colors[] = {
-	{ "client-active",		"#55007a",	0,	{ 0 }},
-	{ "client-inactive",		"#222222",	0,	{ 0 }},
-	{ "frame-bar",			"#55007a",	0,	{ 0 }},
-	{ "frame-bar-inactive",		"#55007a",	0,	{ 0 }},
-	{ "frame-bar-directory",	"#aaaaaa",	0,	{ 0 }},
-	{ "frame-bar-client-active",	"#ffffff",	0,	{ 0 }},
-	{ "frame-bar-client-inactive",	"#555555",	0,	{ 0 }},
+	{ "client-active",		"#000000",	0,	{ 0 }},
+	{ "client-inactive",		"#edece2",	0,	{ 0 }},
+	{ "frame-bar",			"#fffaed",	0,	{ 0 }},
+	{ "frame-bar-inactive",		"#edece2",	0,	{ 0 }},
+	{ "frame-bar-directory",	"#000000",	0,	{ 0 }},
+	{ "frame-bar-client-active",	"#000000",	0,	{ 0 }},
+	{ "frame-bar-client-inactive",	"#888888",	0,	{ 0 }},
 	{ "command-input",		"#ffffff",	0,	{ 0 }},
 	{ "command-bar",		"#000000",	0,	{ 0 }},
 	{ "command-border",		"#55007a",	0,	{ 0 }},
