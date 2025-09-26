@@ -88,15 +88,15 @@ struct {
 	XftColor	color;
 } xft_colors[] = {
 	{ "client-active",		"#000000",	0,	{ 0 }},
-	{ "client-inactive",		"#d0cdb3",	0,	{ 0 }},
-	{ "frame-bar",			"#fff2d0",	0,	{ 0 }},
-	{ "frame-bar-inactive",		"#d0cdb3",	0,	{ 0 }},
-	{ "frame-bar-directory",	"#000000",	0,	{ 0 }},
-	{ "frame-bar-client-active",	"#000000",	0,	{ 0 }},
-	{ "frame-bar-client-inactive",	"#888888",	0,	{ 0 }},
+	{ "client-inactive",		"#000000",	0,	{ 0 }},
+	{ "frame-bar",			"#353535",	0,	{ 0 }},
+	{ "frame-bar-inactive",		"#202020",	0,	{ 0 }},
+	{ "frame-bar-directory",	"#ffffd7",	0,	{ 0 }},
+	{ "frame-bar-client-active",	"#808080",	0,	{ 0 }},
+	{ "frame-bar-client-inactive",	"#000000",	0,	{ 0 }},
 	{ "command-input",		"#ffffff",	0,	{ 0 }},
-	{ "command-bar",		"#000000",	0,	{ 0 }},
-	{ "command-border",		"#55007a",	0,	{ 0 }},
+	{ "command-bar",		"#080808",	0,	{ 0 }},
+	{ "command-border",		"#000000",	0,	{ 0 }},
 	{ NULL,				NULL,		0,	{ 0 }},
 };
 
