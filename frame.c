@@ -45,6 +45,7 @@ static struct frame	*frame_find_right(void);
 static struct frame_list	frames;
 static u_int32_t		frame_id = 1;
 static u_int16_t		zoom_width = 0;
+static struct frame		*popup_restore = NULL;
 
 int				frame_count = -1;
 int				frame_offset = -1;
@@ -148,6 +149,11 @@ coma_frame_popup_hide(void)
 	XUnmapWindow(dpy, frame_popup->bar);
 	if (frame_popup->split != NULL)
 		XUnmapWindow(dpy, frame_popup->split->bar);
+
+	if (popup_restore != NULL) {
+		coma_frame_focus(popup_restore, 1);
+		popup_restore = NULL;
+	}
 }
 
 void
@@ -157,6 +163,8 @@ coma_frame_popup_show(void)
 
 	if (frame_active->flags & COMA_FRAME_ZOOMED)
 		return;
+
+	popup_restore = frame_active;
 
 	focus = frame_popup->focus;
 	frame_active = frame_popup;
