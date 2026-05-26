@@ -113,4 +113,4 @@ prefix-z     = zoom/unzoom current frame to cover all frames
 Screenshots
 -----------
 
-![coma](https://coma.one/wm/screenshots/coma3.png?raw=true)
+![coma](https://hackhub.se/screenshots/coma.png?raw=true)
