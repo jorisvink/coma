@@ -1,5 +1,0 @@
-#!/bin/zsh
-
-print -Pn "\e]0;%m;%d;$1\a"
-
-$@

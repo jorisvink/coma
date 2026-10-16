@@ -1,11 +1,18 @@
 About
 -----
 
-Coma is a minimalistic X11 Window Manager.
+Coma is a minimalistic, keyboard driven, tiling terminal.
 
-It makes my life easier when hacking on my laptop as by default
-I will get my 2 frames containing 80 column terminals with a nice
-gap and layout.
+It started as an X11 window manager many years ago but due
+to the burden of maintaining something like this across many
+different screen configurations and monitors I decided to just
+convert it to an SDL2 backed program in 2026.
+
+This way it runs everywhere without specific hard requirements.
+It currently is tested under MacOS, Linux with X11 and Wayland.
+
+I hacked up st's terminal code and used that as the backing
+terminal emulation.
 
 Read the included manual page for more information.
 
@@ -16,31 +23,26 @@ Coma is licensed under the ISC license.
 Building
 --------
 
-Coma should build fine on MacOS, Linux and OpenBSD.
+Coma should build fine on MacOS and Linux.
 
-OpenBSD:
-```
-$ make
-$ doas make install
-```
+It requires SDL2, SDL2_ttf and fontconfig.
 
 MacOS:
 ```
-$ export PKG_CONFIG_PATH=/opt/X11/share/pkgconfig:/opt/X11/lib/pkgconfig
 $ make
 $ sudo make install
 ```
 
-Linux (requires libbsd):
+Linux:
 ```
-$ env CFLAGS=-D_GNU_SOURCE LDFLAGS=-lbsd make
+$ env CFLAGS=-D_GNU_SOURCE make
 $ sudo make install
 ```
 
 Shell setup
 -----------
 
-Coma ties in directly with your xterms and running shell. With the help
+Coma ties in directly with your terminals and running shell. With the help
 of your shell you can update coma on the hostname, pwd and commands
 running in the clients.
 
@@ -65,10 +67,7 @@ Coma expects the information from the shell in the following format:
 
 hostname;directory;running command
 
-If your environment is configured like the above Coma will be able to
-execute commands on remote hosts transparently via prefix-e as it will
-auto detect what host you are currently on and execute the coma-remote
-script to connect to it before executing the command given.
+This information is then presented in the frame status bar.
 
 Key bindings
 ------------
@@ -76,19 +75,17 @@ All key bindings are changable via the config file (see coma.1).
 
 C-t = prefix
 
-prefix-c     = new xterm
+prefix-prefix = send the prefix key to the terminal
 
-prefix-e     = open command execution input
+prefix-c     = new terminal
 
-prefix-Space = toggle popup area
+prefix-v     = new terminal sandboxed with no internet access
 
 prefix-colon = coma internal command prompt
 
 prefix-p     = previous window
 
 prefix-n     = next window
-
-prefix-r     = restart Coma
 
 prefix-h     = move to frame to the left of current frame
 
@@ -109,8 +106,3 @@ prefix-m     = merge frame back together
 prefix-f     = toggle focus between split frames
 
 prefix-z     = zoom/unzoom current frame to cover all frames
-
-Screenshots
------------
-
-![coma](https://hackhub.se/screenshots/coma.png?raw=true)

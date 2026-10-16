@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Joris Vink <joris@coders.se>
+ * Copyright (c) 2019-2026 Joris Vink <joris@sanctorum.se>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,23 +16,35 @@
 
 #include <sys/types.h>
 
-#include <X11/keysymdef.h>
-
 #include <ctype.h>
+#include <limits.h>
 #include <pwd.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 
+#if defined(__linux__)
+#include <bsd/string.h>
+#endif
+
 #include "coma.h"
+
+#define CONFIG_ARGV_MAX		64
+#define CONFIG_LINE_MAX		1024
 
 static void	config_bind(int, char **);
 static void	config_font(int, char **);
 static void	config_color(int, char **);
+static void	config_shell(int, char **);
 static void	config_prefix(int, char **);
-static void	config_terminal(int, char **);
+static void	config_term_font(int, char **);
+static void	config_term_name(int, char **);
+static void	config_scrollback(int, char **);
+static void	config_screen_width(int, char **);
 static void	config_screen_height(int, char **);
+static void	config_term_font_bold(int, char **);
+static void	config_window_decorations(int, char **);
 
 static void	config_frame_gap(int, char **);
 static void	config_frame_bar(int, char **);
@@ -44,6 +56,7 @@ static void	config_frame_border(int, char **);
 static void	config_frame_layout(int, char **);
 static void	config_frame_create(int, char **);
 
+static int		config_args(int, int);
 static void		config_parse(const char *);
 static void		config_fatal(const char *, const char *, ...);
 
@@ -57,11 +70,17 @@ struct {
 	void			(*cb)(int, char **);
 } keywords[] = {
 	{ "font",			1,	config_font },
-	{ "bind",			2,	config_bind },
+	{ "bind",			-2,	config_bind },
 	{ "color",			2,	config_color },
+	{ "shell",			1,	config_shell },
 	{ "prefix",			1,	config_prefix },
-	{ "terminal",			1,	config_terminal },
+	{ "scrollback",			1,	config_scrollback },
+	{ "screen-width",		1,	config_screen_width },
 	{ "screen-height",		1,	config_screen_height },
+	{ "terminal-font",		1,	config_term_font },
+	{ "terminal-name",		1,	config_term_name },
+	{ "terminal-font-bold",		1,	config_term_font_bold },
+	{ "window-decorations",		1,	config_window_decorations },
 
 	{ "frame-gap",			1,	config_frame_gap },
 	{ "frame-bar",			1,	config_frame_bar },
@@ -78,14 +97,14 @@ struct {
 
 struct {
 	const char	*mod;
-	unsigned int	mask;
+	u_int32_t	mask;
 } modmasks[] = {
-	{ "C",		ControlMask },
-	{ "S",		ShiftMask },
-	{ "M",		Mod1Mask },
-	{ "M2",		Mod2Mask },
-	{ "M3",		Mod3Mask },
-	{ "M4",		Mod4Mask },
+	{ "C",		COMA_MOD_CTRL },
+	{ "S",		COMA_MOD_SHIFT },
+	{ "M",		COMA_MOD_ALT },
+	{ "M2",		COMA_MOD_NUM },
+	{ "M3",		COMA_MOD_MODE },
+	{ "M4",		COMA_MOD_SUPER },
 	{ NULL,		0 }
 };
 
@@ -117,13 +136,13 @@ config_parse(const char *path)
 {
 	FILE		*fp;
 	int		i, argc;
-	char		*line, buf[128], *argv[16];
+	char		*line, buf[CONFIG_LINE_MAX], *argv[CONFIG_ARGV_MAX];
 
 	if ((fp = fopen(path, "r")) == NULL)
 		return;
 
 	while ((line = config_read_line(fp, buf, sizeof(buf))) != NULL) {
-		argc = coma_split_string(line, " ", argv, 16);
+		argc = coma_split_string(line, " ", argv, CONFIG_ARGV_MAX);
 
 		if (argc < 2) {
 			config_line++;
@@ -133,10 +152,11 @@ config_parse(const char *path)
 		for (i = 0; keywords[i].name != NULL; i++) {
 			if (!strcmp(argv[0], keywords[i].name)) {
 				coma_log("got '%s' with %d", argv[0], argc - 1);
-				if (argc - 1 != keywords[i].args) {
+				if (config_args(keywords[i].args,
+				    argc - 1) == -1) {
 					config_fatal(argv[0],
 					    "requires %d args, got %d",
-					    keywords[i].args, argc - 1);
+					    abs(keywords[i].args), argc - 1);
 				} else {
 					keywords[i].cb(argc, argv);
 				}
@@ -166,16 +186,39 @@ config_fatal(const char *kw, const char *fmt, ...)
 	exit(1);
 }
 
+static int
+config_args(int want, int have)
+{
+	if (want < 0 && have >= -want)
+		return (0);
+
+	if (want == have)
+		return (0);
+
+	return (-1);
+}
+
 static void
 config_bind(int argc, char **argv)
 {
-	KeySym		sym;
+	int		i;
+	u_int32_t	sym;
+	char		action[CONFIG_LINE_MAX];
 
-	if ((sym = XStringToKeysym(argv[2])) == NoSymbol)
-		config_fatal(argv[0], "invalid key '%s'", argv[2]);
+	if ((sym = coma_wm_key_parse(argv[argc - 1])) == 0)
+		config_fatal(argv[0], "invalid key '%s'", argv[argc - 1]);
 
-	if (coma_wm_register_action(argv[1], sym) == -1)
-		config_fatal(argv[0], "unknown action '%s'", argv[1]);
+	action[0] = '\0';
+
+	for (i = 1; i < argc - 1; i++) {
+		if (i > 1)
+			(void)strlcat(action, " ", sizeof(action));
+		if (strlcat(action, argv[i], sizeof(action)) >= sizeof(action))
+			config_fatal(argv[0], "action is too long");
+	}
+
+	if (coma_wm_register_action(action, sym) == -1)
+		config_fatal(argv[0], "unknown action '%s'", action);
 }
 
 static void
@@ -243,7 +286,7 @@ config_prefix(int argc, char **argv)
 	if (*key == '\0')
 		config_fatal(argv[0], "missing key value after '-'");
 
-	if ((prefix_key = XStringToKeysym(key)) == NoSymbol)
+	if ((prefix_key = coma_wm_key_parse(key)) == 0)
 		config_fatal(argv[0], "invalid key '%s'", key);
 
 	for (i = 0; modmasks[i].mod != NULL; i++) {
@@ -258,18 +301,68 @@ config_prefix(int argc, char **argv)
 }
 
 static void
-config_terminal(int argc, char **argv)
+config_shell(int argc, char **argv)
 {
-	free(terminal);
+	free(shell);
 
-	if ((terminal = strdup(argv[1])) == NULL)
+	if ((shell = strdup(argv[1])) == NULL)
 		fatal("strdup");
+}
+
+static void
+config_term_font(int argc, char **argv)
+{
+	free(term_font_name);
+
+	if ((term_font_name = strdup(argv[1])) == NULL)
+		fatal("strdup");
+}
+
+static void
+config_term_name(int argc, char **argv)
+{
+	free(term_name);
+
+	if ((term_name = strdup(argv[1])) == NULL)
+		fatal("strdup");
+}
+
+static void
+config_scrollback(int argc, char **argv)
+{
+	scrollback_lines = config_strtonum(argv[0], argv[1], 10, 0, 1000000);
+}
+
+static void
+config_screen_width(int argc, char **argv)
+{
+	screen_width = config_strtonum(argv[0], argv[1], 10, 1, USHRT_MAX);
 }
 
 static void
 config_screen_height(int argc, char **argv)
 {
 	screen_height = config_strtonum(argv[0], argv[1], 10, 1, USHRT_MAX);
+}
+
+static void
+config_term_font_bold(int argc, char **argv)
+{
+	free(term_font_bold_name);
+
+	if ((term_font_bold_name = strdup(argv[1])) == NULL)
+		fatal("strdup");
+}
+
+static void
+config_window_decorations(int argc, char **argv)
+{
+	if (!strcmp(argv[1], "yes"))
+		window_decorations = 1;
+	else if (!strcmp(argv[1], "no"))
+		window_decorations = 0;
+	else
+		config_fatal(argv[0], "expected yes or no, got '%s'", argv[1]);
 }
 
 static void
@@ -323,7 +416,6 @@ config_frame_layout(int argc, char **argv)
 static void
 config_frame_create(int argc, char **argv)
 {
-	struct frame	*frame;
 	u_int16_t	x, y, w, h;
 
 	x = config_strtonum(argv[0], argv[1], 10, 0, USHRT_MAX);
@@ -331,8 +423,7 @@ config_frame_create(int argc, char **argv)
 	w = config_strtonum(argv[0], argv[3], 10, 0, USHRT_MAX);
 	h = config_strtonum(argv[0], argv[4], 10, 0, USHRT_MAX);
 
-	frame = coma_frame_create(w, h, x, y);
-	coma_frame_register(frame);
+	coma_frame_config_create(x, y, w, h);
 }
 
 static char *
@@ -342,6 +433,11 @@ config_read_line(FILE *fp, char *in, size_t len)
 
 	if (fgets(in, len, fp) == NULL)
 		return (NULL);
+
+	if (strchr(in, '\n') == NULL && !feof(fp)) {
+		fatal("config line %d is longer than %zu bytes",
+		    config_line, len);
+	}
 
 	p = in;
 	in[strcspn(in, "\n")] = '\0';

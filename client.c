@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Joris Vink <joris@coders.se>
+ * Copyright (c) 2019-2026 Joris Vink <joris@sanctorum.se>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,10 +16,14 @@
 
 #include <sys/types.h>
 
+#include <limits.h>
 #include <stdlib.h>
 #include <stdio.h>
 
 #include "coma.h"
+
+static struct client	*client_alloc(struct frame *);
+static void		client_attach(struct client *);
 
 struct client_list	clients;
 static u_int32_t	client_id = 1;
@@ -32,82 +36,54 @@ coma_client_init(void)
 }
 
 void
-coma_client_create(Window window)
+coma_client_spawn(char **argv, int secure)
 {
-	XWindowAttributes	attr;
-	struct frame		*frame;
-	struct client		*client;
-	u_int32_t		frame_id, pos, visible;
+	const char	*pwd;
+	struct client	*client;
+	char		path[PATH_MAX];
 
-	XGetWindowAttributes(dpy, window, &attr);
+	pwd = NULL;
 
-	if (coma_wm_property_read(window, atom_frame_id, &frame_id) == -1) {
-		frame_id = 0;
-		frame = frame_active;
-	} else {
-		if ((frame = coma_frame_lookup(frame_id)) == NULL)
-			frame = frame_active;
+#if !defined(__linux__)
+	secure = 0;
+	coma_log("secure terminal not available on this platform");
+#endif
+
+	if (client_active != NULL &&
+	    coma_term_cwd(client_active->term, path, sizeof(path)) == 0)
+		pwd = path;
+
+	client = client_alloc(frame_active);
+	client->secure = secure;
+
+	if ((client->term = coma_term_spawn(argv,
+	    pwd, client, secure)) == NULL) {
+		TAILQ_REMOVE(&clients, client, glist);
+		TAILQ_REMOVE(&client->frame->clients, client, list);
+		free(client);
+		return;
 	}
 
-	if (coma_wm_property_read(window, atom_client_visible, &visible) == -1)
-		visible = 0;
+	client_attach(client);
+}
 
-	if (client_discovery == 0)
-		visible = 1;
+void
+coma_client_cleanup(void)
+{
+	struct client	*client;
 
-	coma_log("window 0x%08x - visible=%d - frame:%u",
-	    window, visible, frame_id);
-
-	client = coma_calloc(1, sizeof(*client));
-	TAILQ_INSERT_TAIL(&clients, client, glist);
-
-	if (coma_wm_property_read(window, atom_client_pos, &pos) == 0)
-		client->pos = pos;
-
-	if (frame->focus != NULL) {
-		TAILQ_INSERT_BEFORE(frame->focus, client, list);
-	} else {
-		TAILQ_INSERT_HEAD(&frame->clients, client, list);
+	while ((client = TAILQ_FIRST(&clients)) != NULL) {
+		TAILQ_REMOVE(&clients, client, glist);
+		TAILQ_REMOVE(&client->frame->clients, client, list);
+		coma_term_free(client->term);
+		free(client->tag);
+		free(client->pwd);
+		free(client->title);
+		free(client->status);
+		free(client);
 	}
 
-	if (frame == frame_popup && frame != frame_active)
-		visible = 0;
-
-	if (client_active == NULL)
-		client_active = client;
-
-	client->x = attr.x;
-	client->y = attr.y;
-	client->w = attr.width;
-	client->h = attr.height;
-
-	client->frame = frame;
-	client->window = window;
-	client->id = client_id++;
-	client->bw = frame_border;
-
-	coma_client_update_title(client);
-
-	XSelectInput(dpy, client->window,
-	    StructureNotifyMask | PropertyChangeMask | FocusChangeMask);
-
-	XAddToSaveSet(dpy, client->window);
-	XSetWindowBorderWidth(dpy, client->window, client->bw);
-
-	coma_wm_register_prefix(client->window);
-	coma_client_adjust(client);
-
-	if (visible) {
-		coma_client_map(client);
-		coma_client_warp_pointer(client);
-	} else {
-		coma_client_hide(client);
-	}
-
-	if (client_discovery == 0) {
-		coma_frame_bar_update(frame);
-		XSync(dpy, False);
-	}
+	client_active = NULL;
 }
 
 void
@@ -116,13 +92,29 @@ coma_client_kill_active(void)
 	if (client_active == NULL)
 		return;
 
-	XKillClient(dpy, client_active->window);
+	coma_client_destroy(client_active);
 }
 
-struct client *
-coma_client_find(Window window)
+void
+coma_client_exited(struct client *client)
 {
-	return (coma_frame_find_client(window));
+	coma_log("client %u (pid %d) exited", client->id,
+	    coma_term_pid(client->term));
+
+	coma_client_destroy(client);
+}
+
+void
+coma_client_reap(pid_t pid)
+{
+	struct client	*client;
+
+	TAILQ_FOREACH(client, &clients, glist) {
+		if (coma_term_pid(client->term) == pid) {
+			coma_client_exited(client);
+			return;
+		}
+	}
 }
 
 void
@@ -148,27 +140,35 @@ coma_client_destroy(struct client *client)
 	TAILQ_REMOVE(&clients, client, glist);
 	TAILQ_REMOVE(&frame->clients, client, list);
 
-	if (client->status)
-		free(client->status);
+	coma_wm_term_gone(client->term);
+	coma_term_free(client->term);
+	coma_wm_io_update();
 
+	free(client->tag);
+	free(client->pwd);
+	free(client->title);
+	free(client->status);
 	free(client);
 
 	coma_frame_bar_update(frame);
 
-	if (was_active == 0)
-		return;
-
-	if (frame_active == frame_popup) {
-		if (TAILQ_EMPTY(&frame_popup->clients)) {
-			coma_frame_popup_toggle();
-			return;
+	if (was_active == 0) {
+		if (frame->focus == NULL) {
+			if (next == NULL)
+				next = TAILQ_FIRST(&frame->clients);
+			frame->focus = next;
 		}
+		return;
 	}
 
 	if (next == NULL) {
-		if ((next = TAILQ_FIRST(&frame->clients)) == NULL) {
-			if (frame->split != NULL)
-				coma_frame_merge();
+		if ((next = TAILQ_FIRST(&frame->clients)) == NULL &&
+		    frame->split != NULL) {
+			frame_active = frame;
+			coma_frame_merge();
+			frame = frame_active;
+			if ((next = frame->focus) == NULL)
+				next = TAILQ_FIRST(&frame->clients);
 		}
 	}
 
@@ -188,129 +188,63 @@ coma_client_adjust(struct client *client)
 	client->x = client->frame->x;
 	client->y = client->frame->y;
 
-	coma_client_send_configure(client);
-
-	coma_wm_property_write(client->window,
-	    atom_frame_id, client->frame->id);
-}
-
-void
-coma_client_map(struct client *client)
-{
-	XMapWindow(dpy, client->window);
-	coma_client_focus(client);
-	coma_wm_property_write(client->window, atom_client_visible, 1);
-}
-
-void
-coma_client_hide(struct client *client)
-{
-	if (!(client->flags & COMA_CLIENT_HIDDEN)) {
-		client->flags |= COMA_CLIENT_HIDDEN;
-		XUnmapWindow(dpy, client->window);
-		coma_wm_property_write(client->window, atom_client_visible, 0);
-	}
-}
-
-void
-coma_client_unhide(struct client *client)
-{
-	if (client->flags & COMA_CLIENT_HIDDEN) {
-		client->flags &= ~COMA_CLIENT_HIDDEN;
-		coma_client_map(client);
-	}
+	coma_term_resize(client->term, client->w, client->h);
 }
 
 void
 coma_client_warp_pointer(struct client *client)
 {
-	XWarpPointer(dpy, None, client->window, 0, 0, 0, 0,
-	    client->w / 2, client->h / 2);
+	coma_wm_warp(client->x + client->bw + (client->w / 2),
+	    client->y + client->bw + (client->h / 2));
 }
 
 void
 coma_client_focus(struct client *client)
 {
-	XftColor	*color;
+	if (client_active != NULL && client_active->id != client->id)
+		coma_term_focus(client_active->term, 0);
 
-	if (client->flags & COMA_CLIENT_HIDDEN) {
-		XMapWindow(dpy, client->window);
-		client->flags &= ~COMA_CLIENT_HIDDEN;
-	}
-
-	XRaiseWindow(dpy, client->window);
-	XSetInputFocus(dpy, client->window, RevertToPointerRoot, CurrentTime);
-
-	color = coma_wm_color("client-active");
-	XSetWindowBorder(dpy, client->window, color->pixel);
-
-	if (client_active != NULL && client_active->id != client->id) {
-		color = coma_wm_color("client-inactive");
-		XSetWindowBorder(dpy, client_active->window, color->pixel);
-	}
+	coma_term_focus(client->term, coma_wm_focused());
 
 	client_active = client;
 	client->frame->focus = client;
 
-	if (client_discovery == 0) {
-		coma_frame_bar_update(client->frame);
-		coma_wm_property_write(DefaultRootWindow(dpy),
-		    atom_client_act, client->window);
-		XSync(dpy, True);
-	}
+	coma_frame_bar_update(client->frame);
+	coma_wm_dirty();
 }
 
 void
-coma_client_send_configure(struct client *client)
+coma_client_update_title(struct client *client, const char *title)
 {
-	XConfigureEvent		cfg;
-
-	memset(&cfg, 0, sizeof(cfg));
-
-	cfg.type = ConfigureNotify;
-	cfg.event = client->window;
-	cfg.window = client->window;
-
-	cfg.x = client->x;
-	cfg.y = client->y;
-	cfg.width = client->w;
-	cfg.height = client->h;
-	cfg.border_width = client->bw;
-
-	XMoveResizeWindow(dpy, client->window,
-	    client->x, client->y, client->w, client->h);
-
-	XSendEvent(dpy, client->window, False,
-	    StructureNotifyMask, (XEvent *)&cfg);
-}
-
-void
-coma_client_update_title(struct client *client)
-{
+	size_t		hlen;
 	int		n, len;
-	char		*name, *args[4], pwd[PATH_MAX];
-
-	if (!XFetchName(dpy, client->window, &name))
-		return;
+	char		*args[4], pwd[PATH_MAX];
 
 	free(client->pwd);
+	free(client->title);
 	free(client->status);
 
 	client->pwd = NULL;
 	client->cmd = NULL;
 	client->host = NULL;
 
-	if ((client->status = strdup(name)) == NULL)
+	if ((client->title = strdup(title)) == NULL)
+		fatal("strdup");
+
+	if ((client->status = strdup(title)) == NULL)
 		fatal("strdup");
 
 	if ((n = coma_split_string(client->status, ";", args, 4)) < 2) {
 		client->cmd = args[0];
+		coma_frame_bar_update(client->frame);
 		return;
 	}
 
-	if (args[1] != NULL && !strncmp(args[1], homedir, strlen(homedir))) {
-		len = snprintf(pwd, sizeof(pwd), "~%s",
-		    args[1] + strlen(homedir));
+	hlen = strlen(homedir);
+
+	if (args[1] != NULL && !strncmp(args[1], homedir, hlen) &&
+	    (args[1][hlen] == '/' || args[1][hlen] == '\0')) {
+		len = snprintf(pwd, sizeof(pwd), "~%s", args[1] + hlen);
 		if (len != -1 && (size_t)len < sizeof(pwd))
 			client->pwd = strdup(pwd);
 	}
@@ -325,5 +259,38 @@ coma_client_update_title(struct client *client)
 	if (n == 3)
 		client->cmd = args[2];
 
-	XFree(name);
+	coma_frame_bar_update(client->frame);
+}
+
+static struct client *
+client_alloc(struct frame *frame)
+{
+	struct client	*client;
+
+	client = coma_calloc(1, sizeof(*client));
+	TAILQ_INSERT_TAIL(&clients, client, glist);
+
+	if (frame->focus != NULL) {
+		TAILQ_INSERT_BEFORE(frame->focus, client, list);
+	} else {
+		TAILQ_INSERT_HEAD(&frame->clients, client, list);
+	}
+
+	client->frame = frame;
+	client->id = client_id++;
+	client->bw = frame_border;
+
+	return (client);
+}
+
+static void
+client_attach(struct client *client)
+{
+	coma_client_adjust(client);
+	coma_wm_io_update();
+
+	coma_client_focus(client);
+	coma_client_warp_pointer(client);
+
+	coma_frame_bar_update(client->frame);
 }

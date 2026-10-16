@@ -18,16 +18,17 @@
 .Os
 .Sh NAME
 .Nm coma
-.Nd a keyboard driven, tiling window manager
+.Nd a keyboard driven, tiling terminal
 .Sh SYNOPSIS
 .Nm
-.Op Fl c
-.Ar config
+.Op Fl c Ar config
+.Op Fl l Ar layout
 .Sh DESCRIPTION
 .Nm
-is a keyboard driven tiling window manager. By default the window manager
-will attempt to create 484 pixel frames on your screen. This is wide enough
-to fit 80-column xterms inside of them when using the default 'fixed' font.
+is a keyboard driven tiling terminal. It opens a single window in which
+it runs shells, laid out in frames. By default
+.Nm
+will attempt to create 484 pixel frames in its window.
 .Pp
 These defaults can be overwritten using the configuration file.
 .Sh CONFIGURATION
@@ -43,12 +44,16 @@ The following options can be configured:
 .It Ic font (default: fixed:pixelsize=13:style=bold)
 The font to be used by coma for status bars and input.
 .It Ic frame-layout (default: default)
-Change frame layout. options: small-large, default.
+Change frame layout. options: default, small-large, small-dual.
+The layout can also be given on the command line with the
+.Op Fl l
+flag.
+.It Ic frame-gap (default: 20)
 The gap between frames and from the top and bottom of the screen.
-.It Ic frame-gap (default: 10)
-The gap between frames and from the top and bottom of the screen.
-.It Ic frame-bar (default: 20)
+.It Ic frame-bar (default: 35)
 The height of the bar at the bottom of the frames.
+.It Ic frame-border (default: 5)
+The width of the border around frames and their bars.
 .It Ic frame-count (default: auto).
 The number of frames to create (by default
 .Nm
@@ -57,14 +62,44 @@ will create frames until they no longer fit on-screen).
 The width of each frame.
 .It Ic frame-height (default: fill)
 The height of each frame.
-.It Ic frame-offset (default: 0)
+.It Ic frame-offset (default: centered)
 The X offset where you want things to be created from.
+.It Ic screen-width (default: display width)
+The initial width of the
+.Nm
+window.
+.It Ic screen-height (default: display height)
+The initial height of the
+.Nm
+window.
+.It Ic window-decorations (default: no)
+Set to yes to let the window manager draw its title bar and borders
+around the
+.Nm
+window.
+.It Ic shell (default: $SHELL)
+The program started in new terminals.
+.It Ic terminal-font (default: monospace:pixelsize=13)
+The font used in terminals, either a fontconfig name or a path to
+a font file optionally followed by :size (eg: ~/fonts/font.pcf:14).
+.It Ic terminal-font-bold (default: none)
+The font used for bold text in terminals, same format as terminal-font.
+When not set, bold is synthesized from terminal-font.
+.It Ic terminal-name (default: xterm-256color)
+The value of TERM in terminals.
+.It Ic scrollback (default: 2000)
+The number of lines kept in the scrollback of each terminal.
+.It Ic terminal
+Ignored, accepted for compatibility with older configurations.
 .It Ic bind
 Bind the given key to the action specified. (see key bindings below).
-If the action is prefixed with cmd: the keybinding will execute that command
-via the coma-run internal instead.
+If the action is prefixed with cmd_shell: the keybinding will run that
+command outside of coma instead, the command may have arguments (use
+double quotes for arguments with spaces) and the key is always last.
 .Pp
 Example: bind frame-next p
+.Pp
+Example: bind cmd_shell:firefox --private-window f
 .It Ic color
 Set the color for the specified type (see colors below).
 .Pp
@@ -73,6 +108,7 @@ Example: color client-active "#55007a"
 Configure the prefix key. The format of this key is in the form of MOD-KEY.
 .Pp
 Allowed MODs: C (Control), S (Shift), M (mod1), M2 (mod2), M3 (mod3), M4 (mod4).
+.El
 .Sh KEY BINDINGS
 All key bindings start with the prefix key which by default is
 .Ic C\-t .
@@ -81,14 +117,16 @@ The prefix key can be configured in the
 .Pp
 These are the default key bindings for all actions:
 .Bl -tag -width Ds
+.It Ic C\-t C\-t
+Send the prefix key itself to the terminal
 .It Ic C\-t c (coma-terminal)
-Start a new xterm in the current frame
+Start a new terminal in the current frame
+.It Ic C\-t v (coma-terminal-secure)
+Start a new terminal in the current frame that is sandboxed from the internet.
 .It Ic C\-t h (frame-prev)
-Move to the next frame
-.It Ic C\-t l (frame-next)
 Move to the previous frame
-.It Ic C\-t space (frame-popup)
-Open and close the popup frame
+.It Ic C\-t l (frame-next)
+Move to the next frame
 .It Ic C\-t z (frame-zoom)
 Zoom/unzoom the current frame
 .It Ic C\-t s (frame-split)
@@ -97,12 +135,15 @@ Split the current frame vertically (can be done only once)
 Merge a vertically split frame back together into one
 .It Ic C\-t f (frame-split-next)
 Toggle between the upper and lower part of a vertical split
+.It Ic C\-t w (frame-layout-swap)
+Swap the frame layout, followed by 1 (default), 2 (small-large)
+or 3 (small-dual)
+.It Ic C\-t 1-9
+Move to the frame with that number
 .It Ic C\-t i (frame-move-client-left)
 Move the active client to the left
 .It Ic C\-t o (frame-move-client-right)
 Move the active client to the right
-.It Ic C\-t r (coma-restart)
-Restart coma
 .It Ic C\-t q (coma-client-list)
 Display client quick selection list
 .It Ic C\-t k (client-kill)
@@ -111,10 +152,12 @@ Kill the active client (no warning will be presented)
 Swap to the previous client in the frame
 .It Ic C\-t n (client-next)
 Swap to the next client in the frame
-.It Ic C\-t e (coma-run)
-Opens an input window and runs the given command when RETURN is hit
 .It Ic C\-t colon (coma-command)
-Runs an internal WM command
+Runs an internal WM command,
+.Ic tag Ar name
+sets the name shown for the active client and
+.Ic untag
+removes it again
 .El
 .Sh COLORS
 Colors must be in RGB format prefixed with a pound character and
@@ -130,12 +173,33 @@ The border color for the current active client.
 The border color for inactive clients.
 .It Ic frame-bar
 The color for the frame bars.
+.It Ic frame-bar-inactive
+The color for the frame bars of inactive frames.
 .It Ic frame-bar-directory
 The directory path of the active client.
 .It Ic frame-bar-client-active
 The text color for the active client in the frame bar.
 .It Ic frame-bar-client-inactive
 The text color for the inactive client in the frame bar.
+.It Ic command-input
+The text color of the command prompt and client list.
+.It Ic command-bar
+The background color of the command prompt and client list.
+.It Ic command-border
+The border color of the command prompt and client list.
+.It Ic background
+The window background behind the frames.
+.It Ic terminal-foreground
+The default text color in terminals.
+.It Ic terminal-background
+The default background color in terminals.
+.El
+.Sh MOUSE
+Selecting text with the left button copies it to the primary selection,
+a double click selects a word and a triple click a line.
+The middle button and Shift-Insert paste the primary selection.
+The scroll wheel and Shift-PageUp / Shift-PageDown scroll back.
+Hold Shift to select text in programs that use the mouse.
 .Sh AUTHORS
 .Nm
 was written by
