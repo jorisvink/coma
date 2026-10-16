@@ -23,6 +23,8 @@
 
 #define TEST_TIMEOUT		5000
 
+void	coma_platform_sandbox(void);
+
 void	test_entry(void);
 void	test_framework_run(void);
 void	test_framework_register(const char *, void (*cb)(void));

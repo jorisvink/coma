@@ -71,6 +71,14 @@ main(void)
 }
 
 /*
+ * Stub for compilation.
+ */
+void
+coma_platform_sandbox(void)
+{
+}
+
+/*
  * Registers a new test to be executed when test_framework_run() is called.
  * The test gets a name and entry point that is called.
  */
