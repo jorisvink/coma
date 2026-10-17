@@ -44,11 +44,6 @@ coma_client_spawn(char **argv, int secure)
 
 	pwd = NULL;
 
-#if !defined(__linux__)
-	secure = 0;
-	coma_log("secure terminal not available on this platform");
-#endif
-
 	if (client_active != NULL &&
 	    coma_term_cwd(client_active->term, path, sizeof(path)) == 0)
 		pwd = path;

@@ -1,0 +1,6 @@
+;; Coma MacOS sandbox for secure terminals
+
+(version 3)
+
+(allow default)
+(deny network*)
