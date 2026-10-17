@@ -81,6 +81,8 @@ prefix-c     = new terminal
 
 prefix-v     = new terminal sandboxed with no internet access
 
+prefix-e     = new sandboxed terminal running ce
+
 prefix-colon = coma internal command prompt
 
 prefix-p     = previous window
