@@ -204,6 +204,17 @@ coma_spawn_terminal_secure(void)
 }
 
 void
+coma_spawn_terminal_ce(void)
+{
+	char	*argv[2];
+
+	argv[0] = "/usr/local/bin/ce";
+	argv[1] = NULL;
+
+	coma_client_spawn(argv, 1);
+}
+
+void
 coma_execute(char **argv)
 {
 	pid_t		pid;

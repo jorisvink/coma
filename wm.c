@@ -186,6 +186,7 @@ struct {
 	{ "frame-move-client-right", 	'o',	coma_frame_client_move_right },
 
 	{ "coma-terminal",		'c',	coma_spawn_terminal },
+	{ "coma-terminal-ce",		'e',	coma_spawn_terminal_ce },
 	{ "coma-terminal-secure",	'v',	coma_spawn_terminal_secure },
 
 	{ "client-kill",		'k',	coma_client_kill_active },

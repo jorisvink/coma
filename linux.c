@@ -22,8 +22,10 @@
 #include <linux/filter.h>
 #include <linux/seccomp.h>
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "coma.h"
 #include "seccomp.h"

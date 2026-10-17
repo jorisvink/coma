@@ -246,6 +246,7 @@ void		coma_command(char *);
 void		coma_execute(char **);
 void		coma_init(int, char **);
 void		coma_spawn_terminal(void);
+void		coma_spawn_terminal_ce(void);
 void		coma_config_parse(const char *);
 void		coma_spawn_terminal_secure(void);
 size_t		coma_utf8_encode(u_int32_t, char *);
