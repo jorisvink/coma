@@ -1052,7 +1052,7 @@ frame_bar_draw(struct frame *frame)
 				len = sizeof(status) - 1;
 
 			if (len > 0)
-				coma_draw_text(x + 65,
+				coma_draw_text(x + 75,
 				    y + 15, dir, status, len);
 		}
 	}
