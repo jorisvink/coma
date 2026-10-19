@@ -17,8 +17,13 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <mach-o/dyld.h>
+
 #include <fcntl.h>
+#include <libgen.h>
+#include <limits.h>
 #include <sandbox.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,8 +33,10 @@
 
 #define COMA_SANDBOX_FILE	"/usr/local/share/coma/sb/coma.sb"
 
-int	sandbox_init_with_parameters(const char *profile,
-	    uint64_t flags, const char *const parameters[], char **errorbuf);
+static int	coma_sandbox_open(void);
+
+int		sandbox_init_with_parameters(const char *,
+		    uint64_t, const char *const [], char **);
 
 void
 coma_platform_sandbox(void)
@@ -41,8 +48,10 @@ coma_platform_sandbox(void)
 	char		*errmsg;
 	char		*profile;
 
-	if ((fd = open(COMA_SANDBOX_FILE, O_RDONLY)) == -1)
-		fatal("failed to open sandbox profile '%s'", COMA_SANDBOX_FILE);
+	if ((fd = coma_sandbox_open()) == -1) {
+		fatal("failed to open sandbox profile (tried app bundle "
+		    "and '%s')", COMA_SANDBOX_FILE);
+	}
 
 	if (fstat(fd, &st) == -1)
 		fatal("fstat(%s): %s", COMA_SANDBOX_FILE, errno_s);
@@ -68,4 +77,30 @@ coma_platform_sandbox(void)
 
 	free(profile);
 	(void)close(fd);
+}
+
+static int
+coma_sandbox_open(void)
+{
+	char		*dir;
+	uint32_t	size;
+	int		fd, len;
+	char		exe[PATH_MAX], real[PATH_MAX], path[PATH_MAX];
+
+	size = sizeof(exe);
+
+	if (_NSGetExecutablePath(exe, &size) == 0 &&
+	    realpath(exe, real) != NULL) {
+		dir = dirname(real);
+
+		len = snprintf(path, sizeof(path),
+		    "%s/../Resources/coma.sb", dir);
+		if (len < 0 || (size_t)len >= sizeof(path))
+			fatal("failed to obtain path to sb");
+
+		if ((fd = open(path, O_RDONLY)) != -1)
+			return (fd);
+	}
+
+	return (open(COMA_SANDBOX_FILE, O_RDONLY));
 }

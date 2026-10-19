@@ -44,6 +44,9 @@ all: $(COMA)
 
 install: $(INSTALL_TARGETS)
 
+app: $(COMA)
+	./macos/make-app.sh
+
 install-bin: $(COMA)
 	mkdir -p $(DESTDIR)$(INSTALL_DIR)
 	mkdir -p $(DESTDIR)$(MAN_DIR)/man1
@@ -65,4 +68,4 @@ tests-run:
 
 clean:
 	$(MAKE) -C tests clean
-	rm -rf $(COMA) $(OBJS)
+	rm -rf $(COMA) $(OBJS) Coma.app
