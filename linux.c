@@ -36,8 +36,8 @@ static struct sock_filter seccomp_filter[] = {
 	KORE_BPF_RET(SECCOMP_RET_KILL),
 	KORE_BPF_LOAD(nr, 0),
 
-	KORE_SYSCALL_DENY_ARG(socket, 0, AF_INET, EPERM),
-	KORE_SYSCALL_DENY_ARG(socket, 0, AF_INET6, EPERM),
+	KORE_SYSCALL_DENY(socket, EPERM),
+	KORE_SYSCALL_DENY(io_uring_setup, EPERM),
 
 	BPF_STMT(BPF_RET+BPF_K, SECCOMP_RET_ALLOW),
 };
