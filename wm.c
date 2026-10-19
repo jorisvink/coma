@@ -1438,6 +1438,10 @@ wm_mouse_button(SDL_MouseButtonEvent *evt)
 		return;
 	}
 
+	/* XXX - macos is dumb */
+	if (button == 1 && (mods & COMA_MOD_ALT))
+		button = 2;
+
 	if (evt->type == SDL_MOUSEBUTTONUP) {
 		if (mouse_term != NULL) {
 			coma_term_mouse_button(mouse_term,

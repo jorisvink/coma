@@ -53,7 +53,7 @@ usage(void)
 	printf("-c\tconfiguration file ($HOME/.comarc by default)\n");
 	printf("-l\tframe layout (default, small-large or small-dual)\n");
 	printf("\n");
-	printf("Mail bugs and patches to joris@coders.se\n");
+	printf("Mail bugs and patches to joris@sanctorum.se\n");
 	printf("\n");
 	exit(1);
 }
