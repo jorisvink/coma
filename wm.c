@@ -45,6 +45,7 @@
 
 #define WM_RENDER_IDLE		4
 #define WM_RENDER_MAX		33
+#define WM_RENDER_QUIET		16
 #define WM_META_WAIT		100
 
 static void	wm_command(void);
@@ -112,6 +113,7 @@ static int		dirty = 1;
 static int		running = 0;
 static u_int32_t	dirty_since = 0;
 static u_int32_t	output_last = 0;
+static int		output_quiet = 0;
 static int		text_wait = 0;
 static int		text_swallow = 0;
 static int		mode = WM_MODE_NORMAL;
@@ -404,7 +406,8 @@ coma_wm_pump(int timeout)
 		idle = now - output_last;
 		busy = now - dirty_since;
 
-		if (idle >= WM_RENDER_IDLE || busy >= WM_RENDER_MAX) {
+		if (output_quiet || idle >= WM_RENDER_IDLE ||
+		    busy >= WM_RENDER_MAX) {
 			wm_render();
 		} else {
 			delay = WM_RENDER_IDLE - idle;
@@ -696,6 +699,7 @@ wm_render(void)
 	struct color	*bg;
 
 	dirty = 0;
+	output_quiet = 0;
 	bg = coma_wm_color("background");
 
 	SDL_SetRenderDrawColor(renderer, bg->r, bg->g, bg->b, 0xff);
@@ -1678,9 +1682,15 @@ wm_layout_swap(void)
 static void
 wm_io(void)
 {
+	u_int32_t	now;
 	struct client	*client, *next;
 
-	output_last = SDL_GetTicks();
+	now = SDL_GetTicks();
+
+	if (now - output_last >= WM_RENDER_QUIET)
+		output_quiet = 1;
+
+	output_last = now;
 
 	for (client = TAILQ_FIRST(&clients); client != NULL; client = next) {
 		next = TAILQ_NEXT(client, glist);
