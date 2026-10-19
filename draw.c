@@ -37,6 +37,9 @@
 #define GLYPH_BUCKETS		1024
 #define GLYPH_MAX		8192
 
+#define ATLAS_PAD		1
+#define ATLAS_SIZE		2048
+
 struct font {
 	TTF_Font		*ttf;
 	int			bold;
@@ -55,7 +58,7 @@ struct glyph {
 	float			yoff;
 	float			advance;
 
-	SDL_Texture		*tex;
+	SDL_Rect		src;
 	struct glyph		*next;
 };
 
@@ -64,11 +67,16 @@ static void		draw_fonts_close(void);
 static void		draw_glyph_flush(void);
 static struct glyph	*draw_glyph_get(int, u_int32_t);
 static int		draw_font_open(struct font *, const char *);
+static void		draw_atlas_place(SDL_Surface *, SDL_Rect *);
 static void		draw_glyph_copy(struct glyph *, float, float,
 			    const struct color *);
 
 static u_int16_t	cell_w = 0;
 static u_int16_t	cell_h = 0;
+static int		atlas_x = 0;
+static int		atlas_y = 0;
+static int		atlas_row = 0;
+static SDL_Texture	*atlas = NULL;
 static int		draw_scale = 1;
 static int		glyph_count = 0;
 static SDL_Renderer	*renderer = NULL;
@@ -165,6 +173,11 @@ coma_draw_cleanup(void)
 {
 	draw_glyph_flush();
 	draw_fonts_close();
+
+	if (atlas != NULL) {
+		SDL_DestroyTexture(atlas);
+		atlas = NULL;
+	}
 
 	TTF_Quit();
 }
@@ -313,6 +326,7 @@ coma_draw_mark(int style, int x, int y, int width, u_int32_t cp,
 static struct glyph *
 draw_glyph_get(int style, u_int32_t cp)
 {
+	SDL_Rect	src;
 	SDL_Color	white;
 	SDL_Surface	*surf;
 	struct font	*font;
@@ -371,13 +385,22 @@ draw_glyph_get(int style, u_int32_t cp)
 	if (surf == NULL)
 		return (NULL);
 
+	if (surf->w + ATLAS_PAD > ATLAS_SIZE ||
+	    surf->h + ATLAS_PAD > ATLAS_SIZE) {
+		SDL_FreeSurface(surf);
+		return (NULL);
+	}
+
 	if (glyph_count >= GLYPH_MAX)
 		draw_glyph_flush();
+
+	draw_atlas_place(surf, &src);
 
 	glyph_count++;
 	glyph = coma_calloc(1, sizeof(*glyph));
 
 	glyph->cp = cp;
+	glyph->src = src;
 	glyph->style = style;
 	glyph->w = (float)surf->w / font->scale;
 	glyph->h = (float)surf->h / font->scale;
@@ -390,12 +413,6 @@ draw_glyph_get(int style, u_int32_t cp)
 	else
 		glyph->yoff = fonts[DRAW_TERM].ascent - font->ascent;
 
-	if ((glyph->tex = SDL_CreateTextureFromSurface(renderer,
-	    surf)) == NULL)
-		fatal("SDL_CreateTextureFromSurface: %s", SDL_GetError());
-
-	SDL_SetTextureBlendMode(glyph->tex, SDL_BLENDMODE_BLEND);
-	SDL_SetTextureScaleMode(glyph->tex, SDL_ScaleModeNearest);
 	SDL_FreeSurface(surf);
 
 	glyph->next = glyphs[bucket];
@@ -410,13 +427,55 @@ draw_glyph_copy(struct glyph *glyph, float x, float y,
 {
 	SDL_FRect	dst;
 
+	if (glyph->src.w == 0 || glyph->src.h == 0)
+		return;
+
 	dst.x = x;
 	dst.w = glyph->w;
 	dst.h = glyph->h;
 	dst.y = y + glyph->yoff;
 
-	SDL_SetTextureColorMod(glyph->tex, color->r, color->g, color->b);
-	SDL_RenderCopyF(renderer, glyph->tex, NULL, &dst);
+	SDL_SetTextureColorMod(atlas, color->r, color->g, color->b);
+	SDL_RenderCopyF(renderer, atlas, &glyph->src, &dst);
+}
+
+static void
+draw_atlas_place(SDL_Surface *surf, SDL_Rect *rect)
+{
+	if (atlas == NULL) {
+		if ((atlas = SDL_CreateTexture(renderer,
+		    SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC,
+		    ATLAS_SIZE, ATLAS_SIZE)) == NULL)
+			fatal("SDL_CreateTexture: %s", SDL_GetError());
+
+		SDL_SetTextureBlendMode(atlas, SDL_BLENDMODE_BLEND);
+		SDL_SetTextureScaleMode(atlas, SDL_ScaleModeNearest);
+	}
+
+	if (atlas_x + surf->w + ATLAS_PAD > ATLAS_SIZE) {
+		atlas_x = 0;
+		atlas_y += atlas_row;
+		atlas_row = 0;
+	}
+
+	if (atlas_y + surf->h + ATLAS_PAD > ATLAS_SIZE)
+		draw_glyph_flush();
+
+	rect->x = atlas_x;
+	rect->y = atlas_y;
+	rect->w = surf->w;
+	rect->h = surf->h;
+
+	atlas_x += surf->w + ATLAS_PAD;
+
+	if (surf->h + ATLAS_PAD > atlas_row)
+		atlas_row = surf->h + ATLAS_PAD;
+
+	if (rect->w == 0 || rect->h == 0)
+		return;
+
+	if (SDL_UpdateTexture(atlas, rect, surf->pixels, surf->pitch) != 0)
+		fatal("SDL_UpdateTexture: %s", SDL_GetError());
 }
 
 static void
@@ -428,12 +487,14 @@ draw_glyph_flush(void)
 	for (i = 0; i < GLYPH_BUCKETS; i++) {
 		for (glyph = glyphs[i]; glyph != NULL; glyph = next) {
 			next = glyph->next;
-			SDL_DestroyTexture(glyph->tex);
 			free(glyph);
 		}
 		glyphs[i] = NULL;
 	}
 
+	atlas_x = 0;
+	atlas_y = 0;
+	atlas_row = 0;
 	glyph_count = 0;
 }
 

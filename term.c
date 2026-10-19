@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <termios.h>
+#include <time.h>
 #include <unistd.h>
 #include <utmp.h>
 
@@ -46,6 +47,7 @@
 #define TERM_WORD_CHARS		"!#%*-./@_~"
 #define TERM_PAD		COMA_TERM_PAD
 
+#define TERM_READ_TIME		8
 #define TERM_READ_MAX		(256 * 1024)
 #define TERM_OUTPUT_MAX		(4 * 1024 * 1024)
 #define TERM_CELL_TEXT		(4 * (COMA_VT_COMB_MAX + 1))
@@ -125,6 +127,7 @@ struct term {
 	struct client		*client;
 };
 
+static u_int64_t	term_msec(void);
 static void		term_colors_default(void);
 static int		term_word_char(u_int32_t);
 static void		term_winsize(struct term *);
@@ -318,12 +321,17 @@ int
 coma_term_read(struct term *term)
 {
 	ssize_t		ret;
+	u_int64_t	start;
 	size_t		total, len, used;
 	char		buf[8192 + sizeof(term->utf8)];
 
 	total = 0;
+	start = term_msec();
 
 	while (total < TERM_READ_MAX) {
+		if (term_msec() - start >= TERM_READ_TIME)
+			break;
+
 		memcpy(buf, term->utf8, term->utf8_len);
 		ret = read(term->fd, buf + term->utf8_len,
 		    sizeof(buf) - term->utf8_len);
@@ -744,6 +752,16 @@ coma_term_select_end(struct term *term)
 		}
 		free(text);
 	}
+}
+
+static u_int64_t
+term_msec(void)
+{
+	struct timespec		ts;
+
+	(void)clock_gettime(CLOCK_MONOTONIC, &ts);
+
+	return (((u_int64_t)ts.tv_sec * 1000) + (ts.tv_nsec / 1000000));
 }
 
 static struct term *

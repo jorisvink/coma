@@ -58,6 +58,7 @@ static void	wm_run_shell_command(const char *);
 static void	wm_input(size_t, void (*)(char *));
 
 static void	wm_render(void);
+static void	wm_render_fps(void);
 static void	wm_render_input(void);
 static void	wm_render_client_list(void);
 static int	wm_client_list_build(struct client **);
@@ -119,6 +120,10 @@ static u_int32_t	meta_cp = 0;
 static u_int32_t	meta_since = 0;
 static int		meta_pending = 0;
 
+static int		fps = 0;
+static u_int32_t	fps_since = 0;
+static int		fps_frames = 0;
+
 static int		pointer_ibeam = 0;
 static int		window_focused = 1;
 static int		pointer_visible = 1;
@@ -154,6 +159,7 @@ static struct {
 	{ "command-input",		"#ffffff",	{ 0, 0, 0 }},
 	{ "command-bar",		"#080808",	{ 0, 0, 0 }},
 	{ "command-border",		"#000000",	{ 0, 0, 0 }},
+	{ "fps-counter",		"#ffbf00",	{ 0, 0, 0 }},
 	{ "background",			"#101010",	{ 0, 0, 0 }},
 	{ "terminal-foreground",	"#ffffd7",	{ 0, 0, 0 }},
 	{ "terminal-background",	"#151515",	{ 0, 0, 0 }},
@@ -706,7 +712,32 @@ wm_render(void)
 		break;
 	}
 
+	wm_render_fps();
+
 	SDL_RenderPresent(renderer);
+}
+
+static void
+wm_render_fps(void)
+{
+	int		len;
+	u_int32_t	now;
+	char		buf[16];
+
+	now = SDL_GetTicks();
+	fps_frames++;
+
+	if (now - fps_since >= 1000) {
+		fps = (fps_frames * 1000) / (now - fps_since);
+		fps_since = now;
+		fps_frames = 0;
+	}
+
+	len = snprintf(buf, sizeof(buf), "%d fps", fps);
+	if (len == -1 || (size_t)len >= sizeof(buf))
+		fatal("failed to construct fps buffer");
+
+	coma_draw_text(5, 15, coma_wm_color("fps-counter"), buf, len);
 }
 
 static void
